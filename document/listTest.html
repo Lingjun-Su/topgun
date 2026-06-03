@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>订单监控系统 - 纯JS严谨版</title>
+    <style>
+        :root { --primary: #0056b3; --success: #28a745; --danger: #dc3545; --warning: #ffc107; --bg: #f4f7f9; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); padding: 20px; font-size: 14px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+
+        /* 搜索区域 */
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; background: #fafafa; padding: 15px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 12px; color: #666; font-weight: bold; }
+        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+
+        /* 表格样式 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; }
+        td { padding: 12px; border-bottom: 1px solid #eee; word-break: break-all; }
+        tr:hover { background: #f1f8ff; }
+
+        /* 状态标签 */
+        .badge { padding: 4px 8px; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; text-decoration: underline; }
+        .st-0 { background: #6c757d; } /* 未付款 */
+        .st-1 { background: var(--success); } /* 首次订购 */
+        .st-2 { background: var(--primary); } /* 继订 */
+        .st-3 { background: var(--danger); }  /* 退订 */
+
+        /* 弹窗样式 */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; width: 600px; margin: 10% auto; padding: 20px; border-radius: 8px; position: relative; }
+        .close { position: absolute; right: 20px; top: 10px; font-size: 24px; cursor: pointer; }
+        .trace-item { border-left: 2px solid var(--primary); margin-left: 10px; padding: 10px 20px; position: relative; }
+        .trace-item::before { content: ''; position: absolute; left: -6px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+
+        .pagination { margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 20px; }
+        .btn { padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>数据推送实时监控 (product_order_test)</h2>
+
+    <div class="filter-grid" id="searchForm">
+        <div class="form-group">
+            <label>渠道 PID</label>
+            <input type="text" id="pid" placeholder="例如: 111">
+        </div>
+        <div class="form-group">
+            <label>订单号</label>
+            <input type="text" id="order_no">
+        </div>
+        <div class="form-group">
+            <label>业务标识 (bus_code)</label>
+            <input type="text" id="bus_code">
+        </div>
+        <div class="form-group">
+            <label>产品标识 (sku_code)</label>
+            <input type="text" id="sku_code">
+        </div>
+        <div class="form-group">
+            <label>订单状态</label>
+            <select id="order_status">
+                <option value="">全部</option>
+                <option value="0">0:未付款</option>
+                <option value="1">1:首次订购</option>
+                <option value="2">2:继订中</option>
+                <option value="3">3:退订</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>创建日期 (从)</label>
+            <input type="date" id="date_start">
+        </div>
+        <div class="form-group" style="grid-column: span 1; display: flex; align-items: flex-end;">
+            <button class="btn" style="width: 100%" onclick="fetchOrders(1)">🔍 执行查询</button>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 60px;">ID</th>
+                <th>订单号/PID</th>
+                <th>业务/产品</th>
+                <th>手机号</th>
+                <th>单价/总额</th>
+                <th>订单状态 (点击查看轨迹)</th>
+                <th>同步状态</th>
+                <th>创建时间</th>
+            </tr>
+        </thead>
+        <tbody id="orderTableBody">
+            </tbody>
+    </table>
+
+    <div class="pagination">
+        <button id="prevPage" class="btn" onclick="changePage(-1)">上一页</button>
+        <span id="pageInfo">第 1 页</span>
+        <button id="nextPage" class="btn" onclick="changePage(1)">下一页</button>
+    </div>
+</div>
+
+<div id="traceModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle">订单状态变更痕迹</h3>
+        <div id="traceList" style="max-height: 400px; overflow-y: auto; padding: 10px;">
+            </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    const API_BASE = 'http://159.75.226.248:8080/api/v2/product-order-test'; // 请对接您的后台路由
+    // const API_BASE = 'http://127.0.0.1:8000/api/v2/product-order-test'; // 请对接您的后台路由
+
+    // 状态定义
+    const statusMap = {
+        0: { text: '未付款', class: 'st-0' },
+        1: { text: '首次订购', class: 'st-1' },
+        2: { text: '继订中', class: 'st-2' },
+        3: { text: '退订', class: 'st-3' }
+    };
+
+    /**
+     * 加载数据
+     */
+    async function fetchOrders(page = 1) {
+        currentPage = page;
+        const params = new URLSearchParams({
+            page: page,
+            pid: document.getElementById('pid').value,
+            order_no: document.getElementById('order_no').value,
+            bus_code: document.getElementById('bus_code').value,
+            sku_code: document.getElementById('sku_code').value,
+            order_status: document.getElementById('order_status').value,
+            date_start: document.getElementById('date_start').value
+        });
+
+        try {
+            const response = await fetch(`${API_BASE}?${params}`);
+            const res = await response.json();
+            renderTable(res.data.data);
+            updatePagination(res.data.current_page, res.data.last_page);
+        } catch (e) {
+            alert('获取数据失败，请检查API地址');
+        }
+    }
+
+    /**
+     * 渲染主表格
+     */
+    function renderTable(orders) {
+        const tbody = document.getElementById('orderTableBody');
+        tbody.innerHTML = orders.map(item => `
+            <tr>
+                <td>${item.id}</td>
+                <td><strong>${item.order_no}</strong><br><small>${item.pid}</small></td>
+                <td>${item.bus_code}<br><small>${item.sku_code}</small></td>
+                <td>${item.user_phone}</td>
+                <td>￥${item.price} / ￥${item.total_amount}</td>
+                <td>
+                    <span class="badge ${statusMap[item.order_status]?.class || 'st-0'}"
+                          onclick="showTrace('${item.order_no}', ${item.id})">
+                        ${statusMap[item.order_status]?.text || '未知'}
+                    </span>
+                </td>
+                <td>${item.sync_status == 1 ? '✅成功' : '⏳待处理'}</td>
+                <td>${item.created_at}</td>
+            </tr>
+        `).join('');
+    }
+
+    /**
+     * 查看状态痕迹 (product_order_statuses)
+     */
+    async function showTrace(orderNo, orderId) {
+        const modal = document.getElementById('traceModal');
+        const traceList = document.getElementById('traceList');
+        document.getElementById('modalTitle').innerText = `订单轨迹: ${orderNo}`;
+
+        traceList.innerHTML = '正在加载痕迹...';
+        modal.style.display = 'block';
+
+        try {
+            // 对接后端获取该订单轨迹的接口
+            const response = await fetch(`http://127.0.0.1:8000/api/v2/third-channel-order-status-test/${orderId}`);
+            const res = await response.json();
+            const traces=res.data.data;
+
+            if (traces.length === 0) {
+                traceList.innerHTML = '暂无变更痕迹';
+                return;
+            }
+
+            traceList.innerHTML = traces.map(t => `
+                <div class="trace-item">
+                    <strong>${statusMap[t.new_status]?.text || '未知状态'}</strong>
+                    <small style="color:#999; margin-left:10px;">${t.created_at}</small>
+                    <div style="font-size:12px; margin-top:5px; color:#666">
+                        变更原因: ${t.remark || '系统自动处理'} <br>
+                        操作员: ${t.operator || 'System'}
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            traceList.innerHTML = '加载失败';
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('traceModal').style.display = 'none';
+    }
+
+    function updatePagination(current, last) {
+        document.getElementById('pageInfo').innerText = `第 ${current} / ${last} 页`;
+        document.getElementById('prevPage').disabled = (current <= 1);
+        document.getElementById('nextPage').disabled = (current >= last);
+    }
+
+    function changePage(offset) {
+        fetchOrders(currentPage + offset);
+    }
+
+    // 初始加载
+    window.onload = () => fetchOrders(1);
+
+    // 点击弹窗外部关闭
+    window.onclick = (event) => {
+        if (event.target == document.getElementById('traceModal')) closeModal();
+    }
+</script>
+
+</body>
+</html>

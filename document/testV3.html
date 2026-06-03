@@ -1,0 +1,471 @@
+这是您需要的业务订单Excel批量导入与推送测试页面的完整代码。它支持上传Excel文件，智能匹配字段，并将数据批量推送到指定API。
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>订单智能导入·批量推送测试平台 | 支持Excel模糊映射</title>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #027be3; --bg: #f0f2f5; --border: #d9d9d9; --success: #52c41a; --warning: #faad14; --danger: #f5222d; --purple: #722ed1; }
+        body { background: var(--bg); font-family: "Segoe UI", Roboto, "Helvetica Neue", sans-serif; padding: 20px; color: #1f2d3d; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 24px; max-width: 1600px; margin: auto; }
+        .header { border-bottom: 2px solid var(--primary); margin-bottom: 20px; padding-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; }
+        h2 { margin:0; font-weight: 600; }
+        .grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px; }
+        .field { flex: 1 1 220px; display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 12px; font-weight: 600; color: #4a5568; letter-spacing: 0.3px; }
+        input, select, textarea { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; transition: 0.2s; background: #fff; }
+        input:focus, select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(2,123,227,0.1); }
+        .btn { padding: 8px 20px; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: #f0f2f5; color: #2c3e50; }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-purple { background: var(--purple); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn:hover { transform: translateY(-1px); filter: brightness(0.96); }
+        .section-card { background: #fefefe; border: 1px solid #eef2f6; border-radius: 16px; padding: 20px; margin-bottom: 30px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+        .section-title { font-weight: 700; font-size: 18px; margin-bottom: 18px; border-left: 5px solid var(--primary); padding-left: 14px; display: flex; align-items: center; gap: 8px; }
+        .mapping-panel { background: #fafcff; border-radius: 14px; border: 1px solid #e2edff; padding: 16px; margin-top: 20px; }
+        .mapping-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; background: white; padding: 8px 12px; border-radius: 12px; border: 1px solid #ecf3fa; }
+        .excel-col { font-weight: 700; min-width: 130px; background: #eef3fc; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .system-field-select { min-width: 160px; }
+        .default-val { min-width: 140px; }
+        .preview-table { max-height: 280px; overflow: auto; font-size: 12px; border: 1px solid #e9ecef; border-radius: 12px; margin-top: 12px; }
+        .preview-table table { width: 100%; border-collapse: collapse; }
+        .preview-table th { background: #f8f9fc; position: sticky; top: 0; padding: 8px; border-bottom: 1px solid #ddd; }
+        .preview-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; }
+        .log-area { background: #1e272e; color: #d2dae2; border-radius: 14px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; max-height: 320px; overflow-y: auto; }
+        .badge { background: #2c3e50; padding: 2px 8px; border-radius: 40px; font-size: 11px; color: white; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        hr { margin: 18px 0; }
+        .loading-txt { color: var(--primary); font-weight: 600; display: none; }
+        .info-note { font-size: 12px; color: #5a6e85; margin-top: 5px; }
+        button:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="header">
+        <div><h2>📦 订单枢纽 · Excel智能导入 + 批量推送</h2><span style="font-size:13px;">支持列顺序任意｜字段缺失自动兜底｜SHA256签名</span></div>
+        <div><span class="badge">测试环境: Laravel + SQL Server</span></div>
+    </div>
+
+    <!-- 全局API配置 (精简) -->
+    <div class="grid" style="background:#f9fbfd; border-radius: 16px; padding: 12px 20px; margin-bottom: 20px;">
+        <div class="field">
+            <label>🔗 API目标地址</label>
+            
+            <select id="targetUrl">
+                <option value="http://127.0.0.1:8000/api/v2/third-channel-test">本地测试</option>
+                <option value="http://127.0.0.1:8000/api/v2/third-channel">本地正式</option>
+                <option value="http://159.75.226.248:8080/api/v2/third-channel-test">服务器测试</option>
+                <option value="http://159.75.226.248:8080/api/v2/third-channel">服务器正式</option>                
+            </select>
+        </div>
+        <div class="field"><label>🔑 通信密钥 (App Secret)</label><input type="password" id="appSecret" value="189"></div>
+        <div class="field">
+            <label>📌 默认订单状态(order_status)</label>
+            <select id="defaultOrderStatus">
+                <option value="1">1:首次订购</option>
+                <option value="2">2:继订中</option>
+                <option value="3">3:退订</option>
+                <option value="0">0:未付款</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- ========================= 区域一：单条订单手动 ========================= -->
+    <div class="section-card">
+        <div class="section-title">✍️ 1. 单条订单 (手动 / 快速复测)</div>
+        <div class="grid" id="manualFormGrid">
+            <div class="field"><label>渠道pid</label><input type="text" id="m_pid" value="189"></div>
+            <div class="field"><label>业务bus_code</label><input type="text" id="m_bus_code" value="001"></div>
+            <div class="field"><label>产品sku_code</label><input type="text" id="m_sku_code" value="002"></div>
+            <div class="field"><label>订单号(order_no)</label><input type="text" id="m_order_no" placeholder="自动生成"></div>
+            <div class="field"><label>会员手机</label><input type="text" id="m_user_phone" value="13812345678"></div>
+            <div class="field"><label>会员昵称</label><input type="text" id="m_user_nick" value="测试昵称"></div>
+            <div class="field"><label>订购时间</label><input type="datetime-local" id="m_order_time"></div>
+            <div class="field"><label>单价(price)</label><input type="number" step="0.01" id="m_price" value="99.00"></div>
+            <div class="field"><label>数量</label><input type="number" id="m_quantity" value="1"></div>
+            <div class="field"><label>总额(total_amount)</label><input type="number" step="0.01" id="m_total" value="99.00"></div>
+            <div class="field"><label>省份代码</label><input id="m_province" value="44"></div>
+            <div class="field"><label>城市代码</label><input id="m_city" value="4401"></div>
+        </div>
+        <div class="flex-between" style="margin-top: 16px;">
+            <div><button class="btn btn-primary" id="singlePostBtn">➕ POST新增</button>
+            <button class="btn" id="resetManualBtn">⟳ 重置手动表单</button></div>
+            <div><span id="singleLoading" class="loading-txt">⏳ 推送中...</span></div>
+        </div>
+        <pre id="singleResponse" style="background:#f4f6f9; color:#2d3e50; margin-top: 14px; font-size:12px;">等待操作...</pre>
+    </div>
+
+    <!-- ========================= 区域二：Excel批量导入（核心） ========================= -->
+    <div class="section-card" style="border: 2px solid #e9d5ff; background: #fefbff;">
+        <div class="section-title">📎 2. Excel智能导入 · 批量推送 <span class="badge" style="background:var(--purple)">列序不限｜自动映射｜缺失默认值</span></div>
+        <div class="grid" style="margin-bottom: 12px;">
+            <div class="field"><label>📂 上传Excel文件</label><input type="file" id="excelFile" accept=".xlsx, .xls, .csv"></div>
+            <div class="field"><label>🔢 表头行索引</label><select id="headerRowIndex"><option value="0">第1行作为列名</option><option value="1">第2行作为列名</option></select></div>
+            <div class="field"><label>🛡️ 缺失订单号自动生成</label><select id="autoGenOrder"><option value="1">是 (EXCEL_时间戳+序号)</option><option value="0">否(缺失报错)</option></select></div>
+            <div class="field"><label>⏱️ 推送间隔(ms)</label><input type="number" id="excelDelay" value="150" min="50"></div>
+        </div>
+        
+
+        <!-- 动态字段映射区 -->
+        <div id="mappingContainer" class="mapping-panel" style="display: none;">
+            <div class="flex-between"><strong>🧩 列字段映射 (Excel列 → 系统字段)</strong><span style="font-size:11px;">💡 留空系统字段则使用【全局兜底值】</span></div>
+            <div id="mappingRowsList"></div>
+            <div style="margin-top: 12px; background:#f7f9fe; padding: 12px; border-radius: 14px;">
+                <strong>🛡️ 全局兜底配置 (当映射列缺失/单元格为空时生效)</strong>
+                <div class="grid" style="margin-top: 8px;">
+                    <div class="field"><label>pid默认值</label><input id="defaultPid" value="189"></div>
+                    <div class="field"><label>bus_code默认值</label><input id="defaultBusCode" value="001"></div>
+                    <div class="field"><label>sku_code默认值</label><input id="defaultSkuCode" value="002"></div>
+                    <div class="field"><label>user_nick默认值</label><input id="defaultUserNick" value="Excel用户"></div>
+                    <div class="field"><label>order_status默认值</label><select id="defaultOrderStatusGlobal"><option value="1">1首次订购</option><option value="2">2继订</option></select></div>
+                    <div class="field"><label>省份代码(默认)</label><input id="defaultProvince" value="44"></div>
+                    <div class="field"><label>城市代码(默认)</label><input id="defaultCity" value="4401"></div>
+                    <div class="field"><label>type(业务类型)</label><input id="defaultType" value="1"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 预览数据表格 -->
+        <div id="excelPreviewArea" style="margin-top: 16px; display: none;">
+            <div class="flex-between"><strong>📋 数据预览 (前15行)</strong><span id="previewTotalRows" style="font-size:12px;"></span></div>
+            <div class="preview-table"><div id="previewTable"></div></div>
+        </div>
+    </div>
+
+    <!-- 批量推送日志 & 进度 -->
+    <div class="flex-between">
+        <button class="btn btn-purple" id="parseExcelBtn">🔍 解析Excel & 构建映射</button>
+        <button class="btn btn-success" id="startExcelPushBtn" disabled>🚀 开始批量推送 (基于映射)</button>
+        <button class="btn btn-danger" id="stopExcelPushBtn" disabled>⏹️ 停止推送</button>
+        <button class="btn" id="clearExcelLogBtn">🗑️ 清空日志</button>
+    </div>
+    <div class="result-area">
+        <div class="flex-between"><label>📡 批量推送实时日志 (Excel逐条)</label><span id="excelProgressSpan"></span></div>
+        <div id="excelLogContainer" class="log-area">⚡ 等待解析Excel并启动推送...</div>
+    </div>
+</div>
+
+<script>
+    // ---------- 全局变量 ----------
+    let parsedExcelRows = [];          // 原始行数据(对象数组，列头小写规范化)
+    let columnMapping = {};            // { excel原始列名: 系统字段名 }
+    let reverseMapping = {};           // 辅助
+    let isExcelPushRunning = false;
+    let stopExcelFlag = false;
+    let currentPushAbort = false;
+    let excelRawDataRows = [];          // 存储原始行用于遍历
+
+    // DOM 元素
+    const targetUrl = document.getElementById('targetUrl');
+    const appSecret = document.getElementById('appSecret');
+    const excelFileInput = document.getElementById('excelFile');
+    const parseBtn = document.getElementById('parseExcelBtn');
+    const startPushBtn = document.getElementById('startExcelPushBtn');
+    const stopPushBtn = document.getElementById('stopExcelPushBtn');
+    const mappingContainer = document.getElementById('mappingContainer');
+    const mappingRowsList = document.getElementById('mappingRowsList');
+    const excelPreviewArea = document.getElementById('excelPreviewArea');
+    const excelLogContainer = document.getElementById('excelLogContainer');
+    const excelProgressSpan = document.getElementById('excelProgressSpan');
+    const clearExcelLogBtn = document.getElementById('clearExcelLogBtn');
+    const autoGenOrderSelect = document.getElementById('autoGenOrder');
+    const excelDelay = document.getElementById('excelDelay');
+
+    // 辅助函数: 添加日志
+    function addExcelLog(msg, type = 'info') {
+        const logDiv = document.createElement('div');
+        logDiv.className = `log-line log-${type}`;
+        const time = new Date().toLocaleTimeString();
+        let colorStyle = '';
+        if (type === 'success') colorStyle = 'color:#4ec9b0';
+        else if (type === 'error') colorStyle = 'color:#f48771';
+        else if (type === 'warning') colorStyle = 'color:#ffb86c';
+        logDiv.innerHTML = `<span style="color:#bbb;">[${time}]</span> <span style="${colorStyle}">${msg}</span>`;
+        excelLogContainer.appendChild(logDiv);
+        logDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        while (excelLogContainer.children.length > 600) excelLogContainer.removeChild(excelLogContainer.firstChild);
+    }
+
+    // 核心请求函数 (复用签名)
+    async function coreRequest(method, url, data, secret) {
+        const timestamp = Math.floor(Date.now() / 1000);
+        const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        const signStr = secret + timestamp + nonce + JSON.stringify(data);
+        const signature = CryptoJS.SHA256(signStr).toString();
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-PID': String(data.pid || ''),
+            'X-Signature': signature,
+            'X-Timestamp': timestamp,
+            'X-Nonce': nonce
+        };
+        const response = await fetch(url, { method, headers, body: JSON.stringify(data) });
+        let respBody;
+        const ct = response.headers.get('content-type');
+        if (ct && ct.includes('application/json')) respBody = await response.json();
+        else respBody = await response.text();
+        return { ok: response.ok, status: response.status, data: respBody };
+    }
+
+    // 从手动表单读取默认模板 (辅助生成单条)
+    function getManualTemplate() {
+        return {
+            pid: document.getElementById('m_pid').value,
+            bus_code: document.getElementById('m_bus_code').value,
+            sku_code: document.getElementById('m_sku_code').value,
+            order_no: document.getElementById('m_order_no').value,
+            user_phone: document.getElementById('m_user_phone').value,
+            user_nick: document.getElementById('m_user_nick').value,
+            order_time: document.getElementById('m_order_time').value ? document.getElementById('m_order_time').value.replace('T', ' ') + ':00' : new Date().toISOString().slice(0,19).replace('T',' '),
+            price: parseFloat(document.getElementById('m_price').value) || 0,
+            quantity: parseInt(document.getElementById('m_quantity').value) || 1,
+            total_amount: parseFloat(document.getElementById('m_total').value) || 0,
+            province_code: document.getElementById('m_province').value,
+            city_code: document.getElementById('m_city').value,
+            order_status: document.getElementById('defaultOrderStatus').value,
+            type: '1',
+            user_status: '0'
+        };
+    }
+
+    // 单条提交
+    document.getElementById('singlePostBtn').onclick = async () => {
+        const url = targetUrl.value.trim();
+        const secret = appSecret.value.trim();
+        if (!url || !secret) { addExcelLog('❌ 请填写API地址和密钥', 'error'); return; }
+        let data = getManualTemplate();
+        if (!data.order_no) data.order_no = 'ORD' + Date.now();
+        document.getElementById('singleLoading').style.display = 'inline-block';
+        try {
+            const res = await coreRequest('POST', url, data, secret);
+            document.getElementById('singleResponse').innerText = JSON.stringify(res.data, null, 2);
+            if (res.ok) addExcelLog(`✅ 单条推送成功 订单:${data.order_no}`, 'success');
+            else addExcelLog(`❌ 单条失败 ${res.status}`, 'error');
+        } catch(e) { document.getElementById('singleResponse').innerText = '异常:'+e.message; addExcelLog(`🔥 单条异常 ${e.message}`, 'error');}
+        finally { document.getElementById('singleLoading').style.display = 'none'; }
+    };
+    document.getElementById('resetManualBtn').onclick = () => { 
+        document.getElementById('m_order_no').value = 'ORD'+Date.now();
+        document.getElementById('m_user_phone').value = '138'+Math.floor(Math.random()*100000000);
+    };
+    // 设置默认时间
+    (()=>{ const now = new Date(); const val = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16); document.getElementById('m_order_time').value = val; })();
+
+    // -------------------- Excel 解析 & 智能映射 --------------------
+    const systemFields = ['order_no', 'user_phone', 'user_nick', 'order_time', 'price', 'quantity', 'total_amount', 'pid', 'bus_code', 'sku_code', 'province_code', 'city_code', 'order_status', 'type', 'user_status'];
+    const fieldAliasMap = {
+        '订单号': 'order_no', '订单编号': 'order_no', 'order_no': 'order_no', 'orderno': 'order_no',
+        '手机号': 'user_phone', '手机号码': 'user_phone', '会员手机': 'user_phone', 'user_phone': 'user_phone',
+        '昵称': 'user_nick', '会员昵称': 'user_nick', 'user_nick': 'user_nick',
+        '订购时间': 'order_time', '下单时间': 'order_time', 'order_time': 'order_time', '时间': 'order_time',
+        '单价': 'price', '价格': 'price', 'price': 'price',
+        '数量': 'quantity', 'quantity': 'quantity',
+        '总额': 'total_amount', '总金额': 'total_amount', 'total_amount': 'total_amount',
+        '渠道id': 'pid', 'pid': 'pid', '渠道ID': 'pid',
+        '业务编码': 'bus_code', 'bus_code': 'bus_code', '业务标识': 'bus_code',
+        '产品编码': 'sku_code', 'sku_code': 'sku_code', '产品标识': 'sku_code',
+        '省份': 'province_code', '省代码': 'province_code', 'province_code': 'province_code',
+        '城市代码': 'city_code', 'city_code': 'city_code', '市代码': 'city_code',
+        '订单状态': 'order_status', 'order_status': 'order_status'
+    };
+    function smartDetectField(excelColName) {
+        const lower = excelColName.toString().trim().toLowerCase().replace(/[_\s]/g,'');
+        for (let [key, field] of Object.entries(fieldAliasMap)) {
+            if (excelColName.toString().trim() === key) return field;
+            if (key.toLowerCase().replace(/[_\s]/g,'') === lower) return field;
+        }
+        if (systemFields.includes(lower)) return lower;
+        return null;
+    }
+
+    parseBtn.onclick = () => {
+        const file = excelFileInput.files[0];
+        if (!file) { addExcelLog('请选择Excel文件', 'error'); return; }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            let rawJson = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+            if (!rawJson || rawJson.length < 2) { addExcelLog('表格至少需要一行表头+数据', 'error'); return; }
+            const headerRowIdx = parseInt(document.getElementById('headerRowIndex').value);
+            const headers = rawJson[headerRowIdx].map(h => h ? String(h).trim() : `col_${Math.random()}`);
+            const dataRows = rawJson.slice(headerRowIdx+1).filter(row => row.some(cell => cell !== undefined && cell !== null && cell !== ''));
+            if(dataRows.length === 0) { addExcelLog('数据区为空', 'error'); return; }
+            // 构建对象数组
+            const excelObjects = dataRows.map(row => {
+                let obj = {};
+                headers.forEach((h, idx) => { obj[h] = row[idx] !== undefined ? row[idx] : ''; });
+                return obj;
+            });
+            parsedExcelRows = excelObjects;
+            // 动态生成映射UI
+            const uniqueHeaders = [...new Set(headers.filter(h => h && h !== ''))];
+            generateMappingUI(uniqueHeaders);
+            mappingContainer.style.display = 'block';
+            // 预览
+            previewExcelData(parsedExcelRows.slice(0,15), headers);
+            excelPreviewArea.style.display = 'block';
+            addExcelLog(`✅ 解析成功: 共 ${parsedExcelRows.length} 行数据，表头列: ${uniqueHeaders.join(', ')}`, 'success');
+            startPushBtn.disabled = false;
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    function generateMappingUI(excelColumns) {
+        mappingRowsList.innerHTML = '';
+        columnMapping = {};
+        excelColumns.forEach(col => {
+            const detected = smartDetectField(col);
+            const defaultField = detected || '';
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'mapping-row';
+            rowDiv.innerHTML = `
+                <div class="excel-col">📎 ${col}</div>
+                <select class="system-field-select" data-excelcol="${col}" style="flex:1.5;">
+                    <option value="">-- 忽略此列 --</option>
+                    ${systemFields.map(f => `<option value="${f}" ${defaultField === f ? 'selected' : ''}>${f}</option>`).join('')}
+                </select>
+                <input type="text" class="default-val" placeholder="该列缺省值(可选)" style="width:150px;" data-defaultcol="${col}">
+                <span style="font-size:11px; color:#666;">⬅️ 映射字段</span>
+            `;
+            mappingRowsList.appendChild(rowDiv);
+            // 保存初始映射
+            if (defaultField) columnMapping[col] = defaultField;
+        });
+        // 监听映射变化
+        document.querySelectorAll('.system-field-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const excelCol = select.getAttribute('data-excelcol');
+                const selectedVal = select.value;
+                if (selectedVal) columnMapping[excelCol] = selectedVal;
+                else delete columnMapping[excelCol];
+            });
+        });
+    }
+
+    function previewExcelData(rows, headers) {
+        if (!rows.length) { document.getElementById('previewTable').innerHTML = '<div>无数据预览</div>'; return; }
+        let html = '<table><thead><tr>';
+        headers.slice(0,10).forEach(h => html += `<th>${h}</th>`);
+        html += '</tr></thead><tbody>';
+        rows.forEach(row => {
+            html += '<tr>';
+            headers.slice(0,10).forEach(h => { html += `<td>${row[h] !== undefined && row[h] !== null ? String(row[h]).substring(0,30) : ''}</td>`; });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('previewTable').innerHTML = html;
+        document.getElementById('previewTotalRows').innerHTML = `共 ${parsedExcelRows.length} 行，展示前15行`;
+    }
+
+    // 根据映射 + 默认值构建订单对象
+    function buildOrderFromExcelRow(excelRow, globalDefaults) {
+        let order = {};
+        // 应用映射
+        for (let [excelCol, sysField] of Object.entries(columnMapping)) {
+            let cellValue = excelRow[excelCol];
+            if (cellValue === undefined || cellValue === null || cellValue === '') {
+                // 尝试取default输入框对该列的默认值
+                const defInput = document.querySelector(`.default-val[data-defaultcol="${excelCol}"]`);
+                const colDefault = defInput ? defInput.value.trim() : '';
+                if (colDefault !== '') cellValue = colDefault;
+                else cellValue = null;
+            }
+            if (cellValue !== null && cellValue !== undefined && cellValue !== '') {
+                order[sysField] = cellValue;
+            }
+        }
+        // 补充全局默认值
+        if (!order.pid) order.pid = globalDefaults.pid;
+        if (!order.bus_code) order.bus_code = globalDefaults.bus_code;
+        if (!order.sku_code) order.sku_code = globalDefaults.sku_code;
+        if (!order.user_nick) order.user_nick = globalDefaults.user_nick;
+        if (!order.province_code) order.province_code = globalDefaults.province_code;
+        if (!order.city_code) order.city_code = globalDefaults.city_code;
+        if (!order.order_status) order.order_status = globalDefaults.order_status;
+        if (!order.type) order.type = globalDefaults.type;
+        if (!order.user_status) order.user_status = '0';
+        // 价格数量处理
+        if (order.price) order.price = parseFloat(order.price);
+        if (order.quantity) order.quantity = parseInt(order.quantity);
+        if (order.total_amount) order.total_amount = parseFloat(order.total_amount);
+        else if (order.price && order.quantity) order.total_amount = order.price * order.quantity;
+        
+        // 订单号处理
+        if (!order.order_no || order.order_no === '') {
+            if (autoGenOrderSelect.value === '1') order.order_no = `EXCEL_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+            else throw new Error('订单号缺失且未开启自动生成');
+        }
+        // 手机号缺失则报错
+        if (!order.user_phone) throw new Error('手机号(user_phone)缺失，请确保映射或提供默认值');
+        // 订购时间格式化
+        if (order.order_time) {
+            let dt = new Date(order.order_time);
+            if (isNaN(dt.getTime())) dt = new Date();
+            order.order_time = dt.toISOString().slice(0,19).replace('T', ' ');
+        } else order.order_time = new Date().toISOString().slice(0,19).replace('T', ' ');
+        // 清洗数字字段
+        if (isNaN(order.price)) order.price = 0;
+        if (isNaN(order.quantity)) order.quantity = 1;
+        if (isNaN(order.total_amount)) order.total_amount = order.price * order.quantity;
+        return order;
+    }
+
+    // 批量推送
+    startPushBtn.onclick = async () => {
+        if (isExcelPushRunning) { addExcelLog('已有推送任务运行', 'warning'); return; }
+        if (!parsedExcelRows || parsedExcelRows.length === 0) { addExcelLog('无Excel数据，请先解析', 'error'); return; }
+        const api = targetUrl.value.trim();
+        const secret = appSecret.value.trim();
+        if (!api || !secret) { addExcelLog('请填写API地址和密钥', 'error'); return; }
+        const globalDefaults = {
+            pid: document.getElementById('defaultPid').value,
+            bus_code: document.getElementById('defaultBusCode').value,
+            sku_code: document.getElementById('defaultSkuCode').value,
+            user_nick: document.getElementById('defaultUserNick').value,
+            province_code: document.getElementById('defaultProvince').value,
+            city_code: document.getElementById('defaultCity').value,
+            order_status: document.getElementById('defaultOrderStatusGlobal').value,
+            type: document.getElementById('defaultType').value
+        };
+        const delayMs = parseInt(excelDelay.value) || 150;
+        isExcelPushRunning = true;
+        stopExcelFlag = false;
+        startPushBtn.disabled = true;
+        stopPushBtn.disabled = false;
+        let successCnt = 0, failCnt = 0;
+        const total = parsedExcelRows.length;
+        for (let i = 0; i < total; i++) {
+            if (stopExcelFlag) { addExcelLog('⏸️ 用户中止推送', 'warning'); break; }
+            const row = parsedExcelRows[i];
+            try {
+                const orderData = buildOrderFromExcelRow(row, globalDefaults);
+                const result = await coreRequest('POST', api, orderData, secret);
+                if (result.ok) { successCnt++; addExcelLog(`✅ [${i+1}/${total}] 订单 ${orderData.order_no} 推送成功`, 'success'); }
+                else { failCnt++; addExcelLog(`❌ [${i+1}/${total}] 订单 ${orderData.order_no || '未知'} 失败 ${result.status} | ${JSON.stringify(result.data).slice(0,100)}`, 'error'); }
+            } catch (err) {
+                failCnt++;
+                addExcelLog(`💥 [${i+1}/${total}] 构建/推送异常: ${err.message}`, 'error');
+            }
+            excelProgressSpan.innerHTML = `📊 进度: ${i+1}/${total} | ✅${successCnt} ❌${failCnt}`;
+            if (i < total-1 && delayMs > 0) await new Promise(r => setTimeout(r, delayMs));
+        }
+        isExcelPushRunning = false;
+        startPushBtn.disabled = false;
+        stopPushBtn.disabled = true;
+        addExcelLog(`🏁 批量结束: 成功 ${successCnt} / 失败 ${failCnt}`, successCnt === total ? 'success' : 'warning');
+        excelProgressSpan.innerHTML = `完成: ✅${successCnt} ❌${failCnt}`;
+    };
+    stopPushBtn.onclick = () => { if (isExcelPushRunning) { stopExcelFlag = true; addExcelLog('正在停止...', 'warning'); } };
+    clearExcelLogBtn.onclick = () => { excelLogContainer.innerHTML = '<div class="log-line">📋 日志已清空</div>'; };
+</script>
+</body>
+</html>

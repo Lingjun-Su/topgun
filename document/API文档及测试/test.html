@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>业务订单全字段推送测试 - 原生JS版</title>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+    <style>
+        :root { --primary: #027be3; --bg: #f0f2f5; --border: #d9d9d9; }
+        body { background: var(--bg); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 25px; max-width: 1200px; margin: auto; }
+        .header { border-bottom: 2px solid var(--primary); margin-bottom: 20px; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .section-title { grid-column: 1 / -1; background: #e6f7ff; padding: 8px 12px; border-left: 4px solid var(--primary); margin: 15px 0 5px 0; font-weight: bold; font-size: 14px; }
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        label { font-size: 12px; color: #666; font-weight: bold; }
+        input, select, textarea { padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(2,123,227,0.1); }
+        .action-bar { grid-column: 1 / -1; margin-top: 30px; padding: 20px; background: #fafafa; border-radius: 4px; display: flex; gap: 15px; align-items: center; }
+        .btn { padding: 10px 25px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: #546e7a; color: white; }
+        .btn:hover { opacity: 0.8; }
+        .result-area { margin-top: 20px; }
+        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 4px; overflow: auto; max-height: 300px; font-size: 12px; }
+        .loading { color: var(--primary); font-weight: bold; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <h2 style="margin:0">🚀 业务订单数据模拟推送 (product_order_test)</h2>
+        <p style="font-size: 12px; color: #888;">测试环境: XAMPP + PHP 8.x + Laravel 12 + SQL Server 2019</p>
+    </div>
+
+    <div class="grid" style="background: #fdfdfd; padding: 15px; border: 1px dashed #ccc; border-radius: 4px;">
+        <div class="field">
+            <label>API 目标 URL</label>
+            <input type="text" id="targetUrl" value="http://159.75.226.248:8080/api/v2/third-channel-test">
+        </div>
+        <div class="field">
+            <label>通信密钥 (App Secret)(向管理员要)</label>
+            <input type="password" id="appSecret" value="43JecFHNABpbCXBhFeGW">
+        </div>
+    </div>
+
+    <form id="orderForm" class="grid">
+        <div class="section-title">1. 基础关联与状态</div>
+        <div class="field"><label>归属结算ID (保留字段)</label><input type="number" name="settlement_id" disabled></div>
+        <div class="field">
+            <label>结算状态 (保留字段)</label>
+            <select name="settle_status" disabled>
+                <option value="0">0:未结算</option>
+                <option value="1">1:已结算</option>
+            </select>
+        </div>
+
+        <div class="section-title">2. 对接识别字段<span class="red">(向管理员要)</span></div>
+        <div class="field"><label>渠道ID (pid)</label><input type="text" name="pid" value="2601"></div>
+        <div class="field"><label>业务标识 (bus_code)</label><input type="text" name="bus_code" value="YW-PAJK-SX"></div>
+        <div class="field"><label>产品标识 (sku_code)</label><input type="text" name="sku_code" value="YW-PAJK-SX-SX-020"></div>
+
+        <div class="section-title">3. 用户信息</div>
+        <div class="field"><label>会员手机 (user_phone)</label><input type="text" name="user_phone" value="13812345678"></div>
+        <div class="field"><label>会员昵称 (user_nick)</label><input type="text" name="user_nick" value="昵称"></div>
+        <div class="field"><label>会员状态</label>
+            <select name="user_status"><option value="0">0:使用中</option><option value="1">1:停止</option></select>
+        </div>
+        <div class="field"><label>区域代码 (省/市)</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" name="province_code" placeholder="省" value="44" style="width: 50%;">
+                <input type="text" name="city_code" placeholder="市" style="width: 50%;" value="4401">
+            </div>
+        </div>
+
+        <div class="section-title">4. 订单核心 (SQL Server 索引字段)</div>
+        <div class="field"><label>订单号 (order_no)</label><input type="text" name="order_no" id="autoOrderNo"></div>
+        <div class="field"><label>订购时间 (order_time)</label><input type="datetime-local" name="order_time"></div>
+        <div class="field"><label>订单状态</label>
+            <select name="order_status">
+                <option value="1">1:首次订购</option>
+                <option value="2">2:继订中</option>
+                <option value="3">3:退订</option>
+                <option value="0">0:未付款</option>
+            </select>
+        </div>
+
+        <div class="section-title">5. 财务信息 (Decimal 18,2)</div>
+        <div class="field"><label>单价 (price)</label><input type="number" step="0.01" name="price" value="99.00"></div>
+        <div class="field"><label>数量 (quantity)</label><input type="number" name="quantity" value="1"></div>
+        <div class="field"><label>总额 (total_amount)</label><input type="number" step="0.01" name="total_amount" value="99.00"></div>
+
+        <div class="section-title">6. 扩展与环境（保留字段）</div>
+        <div class="field"><label>业务类型 (type)</label><input type="text" name="type" value="1"></div>
+        <div class="field"><label>差异化参数 (JSON格式)</label><textarea disabled name="ext_json" rows="2">{"test_tag": "demo"}</textarea></div>
+    </form>
+
+    <div class="action-bar">
+        <button type="button" class="btn btn-primary" onclick="sendData('POST')">🚀 提交新增 (STORE)</button>
+        <button type="button" class="btn btn-secondary" onclick="sendData('PUT')">🔄 更新记录 (UPDATE)</button>
+        <button type="button" class="btn btn-secondary" style="background:#888" onclick="resetForm()">清空</button>
+        <span id="loadingTxt" class="loading">正在通讯中...</span>
+    </div>
+
+    <div class="result-area">
+        <label>服务器响应结果 (Response):</label>
+        <pre id="responseOutput">等待操作...</pre>
+    </div>
+</div>
+
+<script>
+    window.onload = () => {
+        document.getElementById('autoOrderNo').value = 'ORD' + Date.now();
+        // 设置默认时间为当前
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+        document.querySelector('input[type="datetime-local"]').value = localISOTime;
+    };
+
+    async function sendData(method) {
+        const url = document.getElementById('targetUrl').value;
+        const secret = document.getElementById('appSecret').value;
+        const output = document.getElementById('responseOutput');
+        const loader = document.getElementById('loadingTxt');
+
+        // 1. 采集数据
+        const formElement = document.getElementById('orderForm');
+        const formData = new FormData(formElement);
+        const data = Object.fromEntries(formData.entries());
+
+        /**
+         * 【核心修复】 处理时间格式
+         * 将 '2026-03-19T15:43' 转换为 '2026-03-19 15:43:00'
+         * 1. 替换 'T' 字符
+         * 2. 补全秒数 ':00'
+         */
+        if (data.order_time) {
+            data.order_time = data.order_time.replace('T', ' ') + ':00';
+        }
+
+        // 处理其他特殊字段
+        if (data.ext_json) {
+            try { data.ext_json = JSON.parse(data.ext_json); } catch(e) { }
+        }
+
+        const finalUrl = method === 'PUT' ? `${url}/${data.order_no}` : url;
+        loader.style.display = 'inline';
+        output.innerText = '正在发送请求...';
+
+        try {
+            // 2. 签名计算（使用处理后的 data）
+            const timestamp = Math.floor(Date.now() / 1000);
+            const nonce = Math.random().toString(36).substring(2);
+            const signStr = secret + timestamp + nonce + JSON.stringify(data);
+            const signature = CryptoJS.SHA256(signStr).toString();
+
+            // 3. 原生 Fetch 调用
+            const response = await fetch(finalUrl, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-PID': data.pid,
+                    'X-Signature': signature,
+                    'X-Timestamp': timestamp,
+                    'X-Nonce': nonce
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            output.innerText = JSON.stringify(result, null, 2);
+            output.style.color = response.ok ? '#a6e22e' : '#f92672';
+
+        } catch (error) {
+            output.innerText = '请求异常: ' + error.message;
+            output.style.color = '#f92672';
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
+    function resetForm() {
+        if(confirm('确定要清空并刷新页面吗？')) {
+            window.location.reload();
+        }
+    }
+</script>
+</body>
+</html>

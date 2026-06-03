@@ -1,0 +1,32 @@
+---
+description: PHP 控制器、请求验证、路由与 API 层规范
+globs: app/Http/**/*.php,routes/**/*.php
+alwaysApply: false
+---
+
+# HTTP / API 层规范
+
+## 目录
+
+- 后台 JSON API：`app/Http/Controllers/API/` 或 `Contract/`、`Company/`。
+- 入参校验：`app/Http/Requests/{Domain}/`，Controller 注入 FormRequest，避免巨型 `$request->validate()`。
+- 授权：`app/Policies/`，Controller 使用 `AuthorizesRequests` + `$this->authorize()`。
+- 复杂业务：`app/Services/{Domain}/`，Controller 保持薄。
+
+## 路由
+
+- 注册在 `routes/api.php`；REST 优先 `Route::apiResource`。
+- 路由名/URI：复数 kebab 或 camel（与现有 `apiResource('products')` 一致）；新路由勿破坏现有 `v1` 前缀。
+- 第三方回调放在 `ThirdChannel` 相关控制器，注意 `VerifyChannelSignature` 中间件。
+
+## Controller
+
+- 继承 `App\Http\Controllers\Controller`（已含 `ApiResponse`）。
+- 写操作包在 `DB::transaction()` 内（参照 `MasterContractController`）。
+- 返回：成功 `$this->success($data)`；校验失败抛 `ValidationException`；无权限 `AuthorizationException`。
+
+## 命名
+
+- 类：PascalCase + 后缀（`UserController`、`StoreMasterContractRequest`）。
+- 方法：camelCase（`changePassword`）。
+- 历史命名（`Products`、`ThirdChannels` 等复数类名）新代码勿扩散；新 Model 用单数类名 + 复数表名。

@@ -1,0 +1,42 @@
+---
+description: 数据库表、迁移、Eloquent 命名与字段规范
+globs: database/**/*.php,app/Models/**/*.php
+alwaysApply: false
+---
+
+# 数据库与 Model 规范
+
+## 表名
+
+- 复数、蛇形：`master_contracts`、`product_orders`、`third_channels`。
+- 关联表：`{parent}_{child}` 或 `{entity}_logs`，如 `master_contract_logs`、`execute_contract_logs`。
+- 新建表前 grep 现有 migration，避免与历史表名冲突（如 `execution_contracts` vs `execute_contract_logs`）。
+
+## 字段
+
+- 列名：蛇形 `snake_case`；外键 `{table_singular}_id` 或语义名 `org_a_id`。
+- 金额：`decimal(18, 4)` 或项目既有精度；Model `$casts` 与库表一致。
+- 状态：优先 `tinyInteger` + Model/Enum 常量 + `comment()` 说明取值；复杂状态用 `app/Enums/`。
+- 审计：业务主表使用 `$table->timestamps()` + `$table->softDeletes()`（与 `master_contracts` 一致）。
+- 每个业务列尽量加 `->comment('中文说明')`；外键用 `foreignId()->constrained()`。
+
+## 迁移文件
+
+- 命名：`YYYY_MM_DD_HHMMSS_{action}_{table}_table.php`。
+- `up`/`down` 成对；改表用 `Schema::table`，新建用 `Schema::create`。
+- 索引：查询频繁的 `status`、`contract_no`、外键字段加 index。
+
+## Eloquent
+
+- Model 显式 `protected $table`（若表名非 Laravel 默认复数规则）。
+- `$fillable` 白名单；敏感字段勿 mass assign。
+- 命名空间：合同等新代码放在 `App\Models\contract`（小写目录，与现有代码一致）；Controller 引用须与磁盘路径大小写一致（Windows 上勿混用 `Contract` / `contract`）。
+- 关系方法：camelCase；表名仍 snake_case。
+
+```php
+// 迁移片段示例
+$table->string('contract_no', 50)->unique()->comment('合同编号');
+$table->foreignId('org_a_id')->constrained('organizations')->comment('甲方组织ID');
+$table->timestamps();
+$table->softDeletes();
+```

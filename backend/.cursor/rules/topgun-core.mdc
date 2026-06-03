@@ -1,0 +1,14 @@
+---
+description: TopGun 后端全局约定（API、路由、响应格式）
+alwaysApply: true
+---
+
+# TopGun Backend — 全局约定
+
+- 技术栈：Laravel 12、PHP 8.2+、Sanctum、Spatie Permission。
+- 业务域：多媒体渠道/产品订单、组织架构、合同（master / execution）。
+- API 前缀：公开与受保护接口均在 `routes/api.php` 下使用 `prefix('v1')`；受保护路由使用 `auth:sanctum`。
+- 统一 JSON 响应：Controller 使用 `App\Traits\ApiResponse`（`success` / `partial` / `error`）。HTTP 状态码多为 200，以 body 内 `code`、`status` 判断业务结果。
+- 禁止：提交或打印 `.env` 密钥；未经要求不要批量重命名历史表/类（存在 `execute` vs `execution` 等历史命名）。
+- 新功能优先参照：`app/Http/Controllers/Contract/`、`app/Models/contract/`、`database/migrations/` 中合同模块的写法。
+- 人类可读完整规范见：`docs/CONVENTIONS.md`；Agent 入口见：`AGENTS.md`。

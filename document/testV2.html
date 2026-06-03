@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>业务订单批量生成与推送测试 - 增强版</title>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+    <style>
+        :root { --primary: #027be3; --bg: #f0f2f5; --border: #d9d9d9; --success: #52c41a; --warning: #faad14; --danger: #f5222d; }
+        body { background: var(--bg); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 25px; max-width: 1400px; margin: auto; }
+        .header { border-bottom: 2px solid var(--primary); margin-bottom: 20px; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .section-title { grid-column: 1 / -1; background: #e6f7ff; padding: 8px 12px; border-left: 4px solid var(--primary); margin: 15px 0 5px 0; font-weight: bold; font-size: 14px; }
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        label { font-size: 12px; color: #666; font-weight: bold; }
+        input, select, textarea { padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(2,123,227,0.1); }
+        .action-bar { grid-column: 1 / -1; margin-top: 30px; padding: 20px; background: #fafafa; border-radius: 4px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .btn { padding: 10px 25px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: #546e7a; color: white; }
+        .btn-batch { background: #2c3e50; color: white; }
+        .btn-danger { background: #c0392b; color: white; }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .result-area { margin-top: 20px; }
+        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 4px; overflow: auto; max-height: 300px; font-size: 12px; }
+        .loading { color: var(--primary); font-weight: bold; display: none; }
+        .batch-config { background: #f9f9f9; border: 1px solid #e8e8e8; border-radius: 8px; padding: 18px; margin-top: 25px; margin-bottom: 10px; }
+        .batch-config h4 { margin-top: 0; margin-bottom: 15px; color: #2c3e50; font-weight: 600; border-left: 4px solid var(--primary); padding-left: 10px; }
+        .config-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-bottom: 15px; }
+        .config-item { flex: 1; min-width: 140px; }
+        .config-item label { font-weight: 600; margin-bottom: 5px; display: block; }
+        .log-area { background: #1e1e1e; color: #d4d4d4; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 12px; max-height: 280px; overflow-y: auto; margin-top: 20px; }
+        .log-line { border-bottom: 1px solid #333; padding: 4px 0; font-family: monospace; }
+        .log-success { color: #4ec9b0; }
+        .log-error { color: #f48771; }
+        .log-info { color: #ce9178; }
+        .badge { font-size: 11px; background: #2c3e50; padding: 2px 8px; border-radius: 12px; color: white; margin-left: 8px; }
+        hr { margin: 15px 0; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <h2 style="margin:0">🚀 业务订单数据模拟推送 (product_order_test)</h2>
+        <p style="font-size: 12px; color: #888;">测试环境: XAMPP + PHP 8.x + Laravel 12 + SQL Server 2019 | 支持单条 & 批量生成推送</p>
+    </div>
+
+    <div class="grid" style="background: #fdfdfd; padding: 15px; border: 1px dashed #ccc; border-radius: 4px;">
+        <div class="field">
+            <label>API 目标 URL</label>
+            <input type="text" id="targetUrl" value="http://127.0.0.1:8000/api/v2/third-channel-test">
+        </div>
+        <div class="field">
+            <label>通信密钥 (App Secret)</label>
+            <input type="password" id="appSecret" value="189">
+        </div>
+    </div>
+
+    <!-- 单条订单表单 (模板值也作为批量默认模板) -->
+    <form id="orderForm" class="grid">
+        <div class="section-title">1. 基础关联与状态</div>
+        <div class="field"><label>归属结算ID (保留)</label><input type="number" name="settlement_id" disabled></div>
+        <div class="field"><label>结算状态 (保留)</label><select name="settle_status" disabled><option>0:未结算</option></select></div>
+
+        <div class="section-title">2. 对接识别字段</div>
+        <div class="field"><label>渠道ID (pid)</label><input type="text" name="pid" value="189"></div>
+        <div class="field"><label>业务标识 (bus_code)</label><input type="text" name="bus_code" value="001"></div>
+        <div class="field"><label>产品标识 (sku_code)</label><input type="text" name="sku_code" value="002"></div>
+
+        <div class="section-title">3. 用户信息</div>
+        <div class="field"><label>会员手机 (user_phone)</label><input type="text" name="user_phone" id="templatePhone" value="13812345678"></div>
+        <div class="field"><label>会员昵称 (user_nick)</label><input type="text" name="user_nick" value="昵称"></div>
+        <div class="field"><label>会员状态</label><select name="user_status"><option value="0">0:使用中</option><option value="1">1:停止</option></select></div>
+        <div class="field"><label>区域代码</label><div style="display: flex; gap: 5px;"><input type="text" name="province_code" placeholder="省" value="44" style="width: 50%;"><input type="text" name="city_code" placeholder="市" value="4401" style="width: 50%;"></div></div>
+
+        <div class="section-title">4. 订单核心</div>
+        <div class="field"><label>订单号 (order_no)</label><input type="text" name="order_no" id="autoOrderNo"></div>
+        <div class="field"><label>订购时间 (order_time)</label><input type="datetime-local" name="order_time" id="orderTimeInput"></div>
+        <div class="field"><label>订单状态</label><select name="order_status"><option value="1">1:首次订购</option><option value="2">2:继订中</option><option value="3">3:退订</option><option value="0">0:未付款</option></select></div>
+
+        <div class="section-title">5. 财务信息</div>
+        <div class="field"><label>单价 (price)</label><input type="number" step="0.01" name="price" value="99.00"></div>
+        <div class="field"><label>数量 (quantity)</label><input type="number" name="quantity" value="1"></div>
+        <div class="field"><label>总额 (total_amount)</label><input type="number" step="0.01" name="total_amount" value="99.00"></div>
+
+        <div class="section-title">6. 扩展与环境</div>
+        <div class="field"><label>业务类型 (type)</label><input type="text" name="type" value="1"></div>
+        <div class="field"><label>差异化参数 (JSON)</label><textarea disabled name="ext_json" rows="2">{"test_tag": "demo"}</textarea></div>
+    </form>
+
+    <!-- 单条操作栏 -->
+    <div class="action-bar">
+        <button type="button" class="btn btn-primary" onclick="sendSingleData('POST')">🚀 提交新增 (STORE)</button>
+        <button type="button" class="btn btn-secondary" onclick="sendSingleData('PUT')">🔄 更新记录 (UPDATE)</button>
+        <button type="button" class="btn btn-secondary" style="background:#888" onclick="resetForm()">清空重置</button>
+        <span id="loadingTxt" class="loading">正在通讯中...</span>
+    </div>
+
+    <!-- ========= 批量生成配置区域 ========= -->
+    <div class="batch-config">
+        <h4>📦 批量订单自动生成 & 推送 <span class="badge">连续订单号 + 随机手机号 + 随机日期</span></h4>
+        <div class="config-row">
+            <div class="config-item">
+                <label>生成数量</label>
+                <input type="number" id="batchCount" value="5" min="1" max="200" step="1">
+            </div>
+            <div class="config-item">
+                <label>订单号前缀</label>
+                <input type="text" id="orderPrefix" value="BATCH" placeholder="例: ORD / BATCH">
+            </div>
+            <div class="config-item">
+                <label>起始序号 (连续递增)</label>
+                <input type="number" id="orderStartSeq" value="1001" min="1">
+            </div>
+            <div class="config-item">
+                <label>发送间隔(毫秒)</label>
+                <input type="number" id="batchDelay" value="200" min="50" step="50">
+            </div>
+        </div>
+        <div class="config-row">
+            <div class="config-item">
+                <label>📅 随机日期范围 (开始)</label>
+                <input type="date" id="dateStart" value="2026-03-01">
+            </div>
+            <div class="config-item">
+                <label>📅 随机日期范围 (结束)</label>
+                <input type="date" id="dateEnd" value="2026-04-02">
+            </div>
+            <div class="config-item">
+                <label>📱 随机手机号风格</label>
+                <select id="phoneStyle">
+                    <option value="random">完全随机11位</option>
+                    <option value="segment">号段随机(13x/15x/18x)</option>
+                </select>
+            </div>
+            <div class="config-item">
+                <label>📌 是否重新计算总额(price*quantity)</label>
+                <select id="recalcTotal">
+                    <option value="1">是(自动覆盖total_amount)</option>
+                    <option value="0">否(使用表单total_amount)</option>
+                </select>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-top: 10px;">
+            <button type="button" class="btn btn-batch" id="startBatchBtn">⚡ 开始批量生成并推送</button>
+            <button type="button" class="btn btn-danger" id="stopBatchBtn" disabled>⏹️ 停止批量</button>
+            <button type="button" class="btn btn-secondary" id="clearLogBtn">🗑️ 清空日志</button>
+        </div>
+    </div>
+
+    <!-- 响应结果区 (单条) -->
+    <div class="result-area">
+        <label>📡 单条请求响应 (最新):</label>
+        <pre id="responseOutput">等待操作...</pre>
+    </div>
+
+    <!-- 批量推送日志区 -->
+    <div class="result-area">
+        <div class="flex-between"><label>📋 批量推送实时日志 (订单级)</label><span id="batchProgress" style="font-size:12px; color:#027be3;"></span></div>
+        <div id="batchLogContainer" class="log-area">
+            <div class="log-line log-info">⚡ 等待批量任务启动...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ------------------------------ 全局变量 ------------------------------
+    let isBatchRunning = false;
+    let stopBatchFlag = false;
+    let currentBatchAbort = false;
+
+    // 获取DOM元素
+    const targetUrlInput = document.getElementById('targetUrl');
+    const appSecretInput = document.getElementById('appSecret');
+    const responseOutput = document.getElementById('responseOutput');
+    const loadingSpan = document.getElementById('loadingTxt');
+    const batchLogContainer = document.getElementById('batchLogContainer');
+    const batchProgressSpan = document.getElementById('batchProgress');
+    const startBatchBtn = document.getElementById('startBatchBtn');
+    const stopBatchBtn = document.getElementById('stopBatchBtn');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+
+    // 初始化默认时间
+    function initDefaultTime() {
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+        const timeInput = document.querySelector('input[name="order_time"]');
+        if (timeInput) timeInput.value = localISOTime;
+        // 设置默认日期范围
+        const startDate = document.getElementById('dateStart');
+        const endDate = document.getElementById('dateEnd');
+        if (startDate && !startDate.value) {
+            const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+            startDate.value = weekAgo.toISOString().slice(0,10);
+        }
+        if (endDate && !endDate.value) {
+            endDate.value = new Date().toISOString().slice(0,10);
+        }
+    }
+    window.onload = () => {
+        document.getElementById('autoOrderNo').value = 'ORD' + Date.now();
+        initDefaultTime();
+    };
+
+    // ------------------------------ 核心请求函数 (通用签名+发送) ------------------------------
+    async function coreRequest(method, url, data, secret, extraHeaders = {}) {
+        const timestamp = Math.floor(Date.now() / 1000);
+        const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        // 深拷贝data用于签名，注意不要影响原对象
+        const signData = { ...data };
+        // 确保order_time格式正确（如果有时间字段，已经标准化）
+        const signStr = secret + timestamp + nonce + JSON.stringify(signData);
+        const signature = CryptoJS.SHA256(signStr).toString();
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-PID': String(data.pid || ''),
+            'X-Signature': signature,
+            'X-Timestamp': timestamp,
+            'X-Nonce': nonce,
+            ...extraHeaders
+        };
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: headers,
+            body: JSON.stringify(data)
+        });
+        let responseBody;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            responseBody = await response.json();
+        } else {
+            responseBody = await response.text();
+        }
+        return { ok: response.ok, status: response.status, data: responseBody };
+    }
+
+    // 收集当前表单数据 (用作模板)
+    function collectFormTemplate() {
+        const form = document.getElementById('orderForm');
+        const formData = new FormData(form);
+        const rawData = Object.fromEntries(formData.entries());
+        // 转换order_time格式 (如果有)
+        if (rawData.order_time) {
+            rawData.order_time = rawData.order_time.replace('T', ' ') + ':00';
+        }
+        // 处理ext_json 因为disabled不提交，但保留无妨
+        if (rawData.ext_json) {
+            try { rawData.ext_json = JSON.parse(rawData.ext_json); } catch(e) { rawData.ext_json = {}; }
+        } else {
+            rawData.ext_json = {};
+        }
+        // 确保价格是数字
+        if (rawData.price) rawData.price = parseFloat(rawData.price);
+        if (rawData.quantity) rawData.quantity = parseInt(rawData.quantity);
+        if (rawData.total_amount) rawData.total_amount = parseFloat(rawData.total_amount);
+        return rawData;
+    }
+
+    // 随机手机号生成
+    function generateRandomPhone(style) {
+        if (style === 'segment') {
+            const prefixes = ['13', '15', '18', '17', '19'];
+            const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+            const suffix = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+            return prefix + suffix;
+        } else {
+            // 完全随机11位，以1开头
+            let phone = '1';
+            for (let i = 0; i < 10; i++) {
+                phone += Math.floor(Math.random() * 10);
+            }
+            return phone;
+        }
+    }
+
+    // 随机日期时间 (在startDate和endDate之间，精确到秒)
+    function randomDateBetween(startDateStr, endDateStr) {
+        const start = new Date(startDateStr);
+        const end = new Date(endDateStr);
+        if (isNaN(start) || isNaN(end)) return new Date().toISOString().slice(0,19).replace('T', ' ');
+        const randomTime = start.getTime() + Math.random() * (end.getTime() - start.getTime());
+        const randDate = new Date(randomTime);
+        const year = randDate.getFullYear();
+        const month = String(randDate.getMonth() + 1).padStart(2, '0');
+        const day = String(randDate.getDate()).padStart(2, '0');
+        const hours = String(randDate.getHours()).padStart(2, '0');
+        const minutes = String(randDate.getMinutes()).padStart(2, '0');
+        const seconds = String(randDate.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
+    // 添加批量日志
+    function addBatchLog(message, type = 'info') {
+        const logDiv = document.createElement('div');
+        logDiv.className = `log-line log-${type}`;
+        const timeStr = new Date().toLocaleTimeString();
+        logDiv.innerHTML = `[${timeStr}] ${message}`;
+        batchLogContainer.appendChild(logDiv);
+        logDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // 自动保留最近500条，避免过多
+        while (batchLogContainer.children.length > 800) {
+            batchLogContainer.removeChild(batchLogContainer.firstChild);
+        }
+    }
+
+    function clearBatchLog() {
+        batchLogContainer.innerHTML = '';
+        addBatchLog('日志已清空，等待新任务', 'info');
+        batchProgressSpan.innerText = '';
+    }
+
+    // 更新批量进度
+    function updateBatchProgress(current, total, successCount, failCount) {
+        batchProgressSpan.innerHTML = `📊 进度: ${current}/${total} | ✅成功:${successCount} | ❌失败:${failCount}`;
+    }
+
+    // 单条发送 (供原有的新增/更新使用)
+    async function sendSingleData(method) {
+        const url = targetUrlInput.value.trim();
+        const secret = appSecretInput.value.trim();
+        if (!url || !secret) {
+            responseOutput.innerText = '错误: 请填写 API URL 和通信密钥';
+            responseOutput.style.color = '#f92672';
+            return;
+        }
+        let data = collectFormTemplate();
+        // 订单号获取
+        const orderNo = data.order_no;
+        if (!orderNo && method === 'PUT') {
+            responseOutput.innerText = '更新操作需要订单号(order_no)';
+            return;
+        }
+        const finalUrl = method === 'PUT' ? `${url}/${encodeURIComponent(orderNo)}` : url;
+        loadingSpan.style.display = 'inline';
+        responseOutput.innerText = '发送中...';
+        try {
+            const result = await coreRequest(method, finalUrl, data, secret);
+            responseOutput.innerText = JSON.stringify(result.data, null, 2);
+            responseOutput.style.color = result.ok ? '#a6e22e' : '#f92672';
+            if (!result.ok) addBatchLog(`[单条] ${method} ${orderNo || '新订单'} 失败 ${result.status}`, 'error');
+            else addBatchLog(`[单条] ${method} 成功 订单:${orderNo || '新增'}`, 'success');
+        } catch (err) {
+            responseOutput.innerText = '请求异常: ' + err.message;
+            responseOutput.style.color = '#f92672';
+            addBatchLog(`[单条] 异常: ${err.message}`, 'error');
+        } finally {
+            loadingSpan.style.display = 'none';
+        }
+    }
+
+    // ------------------------------ 批量生成并推送核心逻辑 ------------------------------
+    async function startBatchProcess() {
+        if (isBatchRunning) {
+            addBatchLog('批量任务已在运行中，请勿重复启动', 'error');
+            return;
+        }
+        // 获取批量配置参数
+        const batchCount = parseInt(document.getElementById('batchCount').value);
+        if (isNaN(batchCount) || batchCount < 1 || batchCount > 500) {
+            addBatchLog('❌ 生成数量须在1~500之间', 'error');
+            return;
+        }
+        const orderPrefix = document.getElementById('orderPrefix').value.trim();
+        if (!orderPrefix) {
+            addBatchLog('❌ 订单号前缀不能为空', 'error');
+            return;
+        }
+        let startSeq = parseInt(document.getElementById('orderStartSeq').value);
+        if (isNaN(startSeq)) startSeq = 1;
+        const delayMs = parseInt(document.getElementById('batchDelay').value);
+        const dateStart = document.getElementById('dateStart').value;
+        const dateEnd = document.getElementById('dateEnd').value;
+        if (!dateStart || !dateEnd) {
+            addBatchLog('❌ 请选择随机日期范围 (开始/结束)', 'error');
+            return;
+        }
+        if (new Date(dateStart) > new Date(dateEnd)) {
+            addBatchLog('❌ 开始日期不能晚于结束日期', 'error');
+            return;
+        }
+        const phoneStyle = document.getElementById('phoneStyle').value;
+        const recalcTotal = document.getElementById('recalcTotal').value === '1';
+        
+        const apiUrl = targetUrlInput.value.trim();
+        const secret = appSecretInput.value.trim();
+        if (!apiUrl || !secret) {
+            addBatchLog('❌ API URL 或 通信密钥未填写，批量推送中止', 'error');
+            return;
+        }
+        
+        // 获取模板数据 (从表单中提取所有有效字段)
+        const template = collectFormTemplate();
+        // 确保模板中有必要字段
+        if (!template.pid || !template.bus_code || !template.sku_code) {
+            addBatchLog('⚠️ 模板中渠道ID(pid)/bus_code/sku_code不能为空，请检查表单', 'error');
+            return;
+        }
+        
+        // 准备批量发送标志
+        isBatchRunning = true;
+        stopBatchFlag = false;
+        startBatchBtn.disabled = true;
+        stopBatchBtn.disabled = false;
+        
+        let successCount = 0;
+        let failCount = 0;
+        let currentIndex = 0;
+        
+        addBatchLog(`🚀 批量任务启动: 共生成 ${batchCount} 条订单, 订单号前缀:${orderPrefix}, 起始序号:${startSeq}, 延迟:${delayMs}ms`, 'info');
+        addBatchLog(`📅 随机日期范围: ${dateStart} 至 ${dateEnd} | 手机风格:${phoneStyle === 'random' ? '完全随机' : '号段随机'}`, 'info');
+        
+        // 循环生成并发送
+        for (let i = 0; i < batchCount; i++) {
+            if (stopBatchFlag) {
+                addBatchLog(`⏸️ 用户手动停止批量任务，已发送 ${currentIndex}/${batchCount}`, 'warning');
+                break;
+            }
+            currentIndex = i + 1;
+            // 1. 生成订单号 (连续)
+            const currentSeq = startSeq + i;
+            const orderNo = `${orderPrefix}${currentSeq}`;
+            
+            // 2. 随机手机号
+            const randomPhone = generateRandomPhone(phoneStyle);
+            
+            // 3. 随机订购时间 (指定范围内)
+            const randomOrderTime = randomDateBetween(dateStart, dateEnd);
+            
+            // 4. 复制模板并替换动态字段
+            const newOrder = JSON.parse(JSON.stringify(template));
+            newOrder.order_no = orderNo;
+            newOrder.user_phone = randomPhone;
+            newOrder.order_time = randomOrderTime;
+            // 可选: 让昵称也随机一点，便于区分 (加上手机尾号)
+            newOrder.user_nick = `${template.user_nick || '用户'}_${randomPhone.slice(-4)}`;
+            
+            // 如果选择重新计算总额
+            if (recalcTotal) {
+                const priceVal = parseFloat(newOrder.price) || 0;
+                const qtyVal = parseInt(newOrder.quantity) || 1;
+                newOrder.total_amount = parseFloat((priceVal * qtyVal).toFixed(2));
+            } else {
+                newOrder.total_amount = parseFloat(newOrder.total_amount) || 0;
+            }
+            
+            // 确保价格字段为数字
+            newOrder.price = parseFloat(newOrder.price) || 0;
+            newOrder.quantity = parseInt(newOrder.quantity) || 1;
+            
+            // 额外健壮性：删除disabled字段可能遗留的无效字段（但无影响）
+            delete newOrder.settlement_id;
+            delete newOrder.settle_status;
+            
+            // 发送请求 (POST 新增)
+            try {
+                const result = await coreRequest('POST', apiUrl, newOrder, secret);
+                if (result.ok) {
+                    successCount++;
+                    addBatchLog(`✅ [${currentIndex}/${batchCount}] 订单 ${orderNo} 推送成功 | 手机:${randomPhone} | 时间:${randomOrderTime}`, 'success');
+                } else {
+                    failCount++;
+                    let errMsg = typeof result.data === 'object' ? JSON.stringify(result.data).substring(0, 150) : String(result.data);
+                    addBatchLog(`❌ [${currentIndex}/${batchCount}] 订单 ${orderNo} 失败 (${result.status}) : ${errMsg}`, 'error');
+                }
+            } catch (err) {
+                failCount++;
+                addBatchLog(`💥 [${currentIndex}/${batchCount}] 订单 ${orderNo} 网络/异常: ${err.message}`, 'error');
+            }
+            
+            // 更新进度显示
+            updateBatchProgress(currentIndex, batchCount, successCount, failCount);
+            
+            // 延时 (除了最后一条)
+            if (i < batchCount - 1 && delayMs > 0) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+        }
+        
+        // 批量结束
+        isBatchRunning = false;
+        startBatchBtn.disabled = false;
+        stopBatchBtn.disabled = true;
+        addBatchLog(`🏁 批量任务结束: 总计 ${batchCount} 条, 成功: ${successCount}, 失败: ${failCount}`, successCount === batchCount ? 'success' : 'warning');
+        updateBatchProgress(batchCount, batchCount, successCount, failCount);
+        if (successCount > 0) {
+            responseOutput.innerText = `批量推送完成: 成功 ${successCount} 条, 失败 ${failCount} 条, 详情见日志区`;
+            responseOutput.style.color = '#a6e22e';
+        }
+    }
+    
+    // 停止批量
+    function stopBatch() {
+        if (isBatchRunning) {
+            stopBatchFlag = true;
+            addBatchLog('正在停止批量任务，等待当前订单完成...', 'warning');
+        } else {
+            addBatchLog('当前没有运行中的批量任务', 'info');
+        }
+    }
+    
+    // 重置表单 (清空但保留配置)
+    function resetForm() {
+        if (confirm('确定重置所有订单表单数据吗？不会影响批量配置。')) {
+            window.location.reload();
+        }
+    }
+    
+    // 绑定批量按钮事件
+    startBatchBtn.addEventListener('click', startBatchProcess);
+    stopBatchBtn.addEventListener('click', stopBatch);
+    clearLogBtn.addEventListener('click', clearBatchLog);
+    
+    // 辅助: 清空表单快速重置（不刷新页面但保留API配置，仅重置订单表单字段为默认）
+    window.resetForm = resetForm;
+    window.sendSingleData = sendSingleData;
+    // 可选初始化日志区
+    clearBatchLog();
+</script>
+</body>
+</html>
