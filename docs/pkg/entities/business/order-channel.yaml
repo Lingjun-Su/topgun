@@ -1,0 +1,153 @@
+# 业务实体 —— 渠道/订单域（order-channel）
+
+# 运营商
+business.carrier:
+  id: "business.carrier"
+  type: "business_entity"
+  name: "运营商"
+  description: "运营商（如移动/联通/电信），业务产品归属于运营商。"
+  owner: "module.business-data"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["基础数据"]
+  attributes:
+    code: { type: "string" }
+    name: { type: "string" }
+  last_verified: "2026-09-02"
+
+# 业务
+business.business:
+  id: "business.business"
+  type: "business_entity"
+  name: "业务"
+  description: "业务（business），通过 business.code 标识；产品通过 products.business_id 关联业务。"
+  owner: "module.business-data"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["基础数据", "订单校验"]
+  attributes:
+    code: { type: "string", note: "订单校验使用 bus_code -> business.code" }
+    name: { type: "string" }
+  last_verified: "2026-09-02"
+
+# 产品
+business.product:
+  id: "business.product"
+  type: "business_entity"
+  name: "产品"
+  description: "业务产品（products），字段含 sku_code、base_price；product_id 用于订单归属。"
+  owner: "module.business-data"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["基础数据", "订单校验", "定价"]
+  attributes:
+    sku_code: { type: "string", note: "订单校验使用 sku_code -> products.sku_code" }
+    base_price: { type: "decimal", note: "订单金额 = base_price * quantity" }
+    business_id: { type: "integer" }
+    carrier_id: { type: "integer" }
+    status: { type: "integer", note: "1=启用" }
+  last_verified: "2026-09-02"
+
+# 第三方渠道（A/C 公司）
+business.channel:
+  id: "business.channel"
+  type: "business_entity"
+  name: "第三方渠道"
+  description: "第三方渠道（third_channels），即 A 上游供应商或 C 下游推广公司；身份由 role 字段决定（supplier_a / channel_c），与 method 能力位正交。"
+  owner: "module.channel"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["渠道", "三角色模型", "配置驱动"]
+  attributes:
+    pid: { type: "string", note: "渠道唯一标识，签名鉴权与路由依据" }
+    role: { type: "enum", values: ["supplier_a", "channel_c", "unset"], note: "身份角色；禁止用 method 反推" }
+    method: { type: "enum", values: ["接收", "发送", "转发"], note: "能力位，与 role 正交" }
+    key: { type: "string", note: "签名密钥" }
+    status: { type: "integer" }
+    push_base_url: { type: "string", note: "推送目标上游地址" }
+    push_steps: { type: "array", note: "多步骤推送配置（getCode/submit）" }
+    push_success_rule: { type: "array", note: "渠道级成功判定规则" }
+    auto_forward: { type: "boolean" }
+    forward_target_pid: { type: "string", note: "中转目标渠道 PID；允许自指向" }
+    ext_config: { type: "array", note: "旧配置，含 target_pid legacy fallback" }
+    organization_id: { type: "integer" }
+  last_verified: "2026-09-02"
+
+# 产品订单
+business.product_order:
+  id: "business.product_order"
+  type: "business_entity"
+  name: "产品订单"
+  description: "产品订单（product_orders 生产 / product_order_tests 测试），订单业务字段主表；中转推送结果冗余记录，正本为 forward_orders。"
+  owner: "module.order"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["订单", "核心"]
+  attributes:
+    order_no: { type: "string", note: "订单号，A 公司侧唯一" }
+    pid: { type: "string", note: "来源渠道 PID" }
+    order_status: { type: "integer", note: "0=未付款 1=首次订购 ..." }
+    price: { type: "decimal" }
+    total_amount: { type: "decimal" }
+    trace_id: { type: "string", note: "全链路追踪 ID" }
+    link_id: { type: "string", note: "转发 getCode 步骤返回的 linkId" }
+    forward_log: { type: "text", note: "转发过程日志（原子 CONCAT 追加）" }
+    sync_status: { type: "integer" }
+  last_verified: "2026-09-02"
+
+# 数据中转 / 转发编排
+business.forward_order:
+  id: "business.forward_order"
+  type: "business_entity"
+  name: "数据中转记录"
+  description: "中转编排（forward_orders / ForwardOrder）：记录 A → 本系统 → 移动 的完整中转链路与多步骤状态。多步推送统一入口，取代 quanyu_orders。"
+  owner: "module.order"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["中转", "核心", "多步骤"]
+  attributes:
+    source_pid: { type: "string", note: "源渠道 PID" }
+    target_pid: { type: "string", note: "目标渠道 PID" }
+    source_order_no: { type: "string" }
+    target_order_no: { type: "string" }
+    source_data: { type: "array", note: "A 公司原始数据" }
+    step_data: { type: "array", note: "各步骤累加输出（含 linkId / smsCode）" }
+    step_responses: { type: "array", note: "各步骤请求-响应快照" }
+    forward_status: { type: "enum", note: "0待处理 1成功 2失败 4待验证" }
+    callback_status: { type: "enum", note: "0待回调 1成功 2失败" }
+    verify_attempts: { type: "integer", note: "验证码最大尝试 5" }
+  last_verified: "2026-09-02"
+
+# 全宇订单（废弃）
+business.quanyu_order:
+  id: "business.quanyu_order"
+  type: "business_entity"
+  name: "全宇订单（废弃）"
+  description: "旧订单同步表（quanyu_orders），写路径已断裂，32,561 条孤儿行 sync_status=0。仅被 quanyu 读/取消/重试/统计/追踪路径残留引用。"
+  owner: "module.order"
+  status: "deprecated"
+  source: ["verified_code", "database_schema", "agent_inference"]
+  confidence: "confirmed"
+  tags: ["废弃", "技术债"]
+  attributes:
+    sync_status: { type: "integer", note: "全部为 0（待同步），从未被消费" }
+  last_verified: "2026-09-02"
+
+# 天选订单（死代码）
+business.tianxuan_order:
+  id: "business.tianxuan_order"
+  type: "business_entity"
+  name: "天选订单（死代码）"
+  description: "天选订单栈（TianxuanOrder 模型 + TianxuanOrderService + TianxuanOrdersController），对应 tianxuan_orders 表在真实数据库中不存在，全栈死代码，待删除（任务 T-11）。"
+  owner: "module.order"
+  status: "broken"
+  source: ["verified_code", "database_schema", "agent_inference"]
+  confidence: "confirmed"
+  tags: ["死代码", "技术债"]
+  last_verified: "2026-09-02"

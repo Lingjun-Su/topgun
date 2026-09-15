@@ -1,0 +1,65 @@
+# 代码关系（code ↔ code 调用/使用）
+
+relations:
+  - id: "rel.code_receiver_forward_service"
+    from: "code.backend.receiver_controller"
+    to: "code.backend.forward_service"
+    type: "calls"
+    strength: "critical"
+    reason: "dispatchForwardIfNeeded / verifySubmit 调用 executeStep"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.code_receiver_process_job"
+    from: "code.backend.receiver_controller"
+    to: "code.backend.process_order_job"
+    type: "triggers"
+    strength: "strong"
+    reason: "store() 派发 ProcessOrderJob::dispatch(queue=high)"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.code_forward_service_loader"
+    from: "code.backend.forward_service"
+    to: "code.backend.channel_config_loader"
+    type: "uses"
+    strength: "strong"
+    reason: "load() 加载目标渠道配置"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.code_forward_service_mapper"
+    from: "code.backend.forward_service"
+    to: "code.backend.data_mapper"
+    type: "uses"
+    strength: "strong"
+    reason: "mapForPush / 输出提取"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.code_forward_service_sign"
+    from: "code.backend.forward_service"
+    to: "code.backend.sign_service"
+    type: "uses"
+    strength: "strong"
+    reason: "getConfigForChannel + sign"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.code_push_service_used_by_forward"
+    from: "code.backend.push_service"
+    to: "code.backend.forward_service"
+    type: "references"
+    strength: "weak"
+    reason: "PushService 为统一单步推送；ForwardService 独立实现多步骤 HTTP 推送（当前未复用 PushService）"
+    source: ["agent_inference"]
+    confidence: "probable"
+
+  - id: "rel.code_forward_order_job"
+    from: "code.backend.forward_order_job"
+    to: "code.backend.forward_service"
+    type: "references"
+    strength: "normal"
+    reason: "ForwardOrderJob 异步编排（与 ForwardService 同步执行并列）"
+    source: ["agent_inference"]
+    confidence: "probable"

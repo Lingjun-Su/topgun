@@ -1,0 +1,91 @@
+# Scanner / 项目考古扫描报告（初版）
+
+generated_at: "2026-09-02"
+generator: "technical-director manual archaeology (first baseline)"
+status: "candidate（部分需技术总监逐项 CONFIRM/REJECT/MODIFY 后进入正式 PKG）"
+
+# 输出等级：ERROR（确定问题）/ WARNING（高度可疑）/ CANDIDATE（潜在事实）/ INFO（普通发现）
+
+## ERROR（确定问题）
+
+errors:
+  - id: "ERR-001"
+    level: "ERROR"
+    title: "事件监听器未注册，OrderCreated/OrderStatusUpdated 无监听消费"
+    detail: "bootstrap/app.php 仅 withRouting；AppServiceProvider 仅 Event::listen(Login)；无 EventServiceProvider、无 withEvents、无 shouldDiscoverEvents。OrderProcessListener / AsyncOrderAuditListener 虽然存在但未注册。"
+    evidence:
+      - "bootstrap/app.php:8 withRouting"
+      - "app/Providers/AppServiceProvider.php:41 Event::listen(Login)"
+      - "rg 'withEvents|shouldDiscoverEvents|registerListeners' => 无命中"
+    impact: "OrderCreated / OrderStatusUpdated 事件派发为 no-op，依赖监听器审计/通知/审计日志的链路静默失效。"
+    confidence: "confirmed"
+
+  - id: "ERR-002"
+    level: "ERROR"
+    title: "tianxuan_orders 表在真实数据库不存在，Tianxuan* 全栈死代码"
+    detail: "TianxuanOrder 模型 + TianxuanOrderService + TianxuanOrdersController 仍存在并被路由引用，但 tianxuan_orders 表不存在，写入必然失败。"
+    impact: "死代码，浪费维护成本 + 潜在运行时错误。"
+    confidence: "confirmed"
+    action: "任务 T-11 后端删除 Tianxuan 死代码"
+
+  - id: "ERR-003"
+    level: "ERROR"
+    title: "quanyu_orders 写路径断裂，32,561 孤儿行 sync_status=0"
+    detail: "QuanyuOrderRequest 未被路由引用、QuanyuService::store 未被调用、OrderProcessJob 仅命中 pid==='186'（0 行）。表内 32,561 行 sync_status=0 从未成功同步。"
+    impact: "写路径完全失效；读/取消/重试/统计/追踪路径仍引用该表（劳动残留在 module.order 与 PushStats/Trace）。"
+    confidence: "confirmed"
+
+## WARNING（高度可疑）
+
+warnings:
+  - id: "WARN-001"
+    level: "WARNING"
+    title: "代码与文档一致性的公司字面量特例仍未清除"
+    detail: "执行路径中残留 pid==='186'、cladmin、xinquanyu、tianxuan、targetMethod==='quanyu' 等公司字面量（见 QuanyuService / PushToXinquanyu / TianxuanOrdersController）。"
+    action: "任务 T-10 后端清除公司字面量特例"
+    confidence: "confirmed"
+
+  - id: "WARN-002"
+    level: "WARNING"
+    title: "PushService 与 ForwardService 判定逻辑重复"
+    detail: "两者各自实现 matchRule/compareValue 与成功判定（success_rule → fail_rule → 默认），存在重复但当前 ForwardService 未复用 PushService。"
+    action: "待确认：是否收敛为统一判定组件（低优先级）。"
+    confidence: "probable"
+
+  - id: "WARN-003"
+    level: "WARNING"
+    title: "契约映射命名不一致风险（product_id vs productId）"
+    detail: "后端 product_id 等 snake_case 与前端 camelCase 之间依赖既有转换约定，需扫描确认无断裂（spec §30）。"
+    confidence: "unknown"
+
+## CANDIDATE（潜在事实，待技术总监审核）
+
+candidates:
+  - id: "CAND-001"
+    from: "code.backend.push_service"
+    to: "code.backend.forward_service"
+    type: "references"
+    confidence: "probable"
+    note: "PushService 是否应被 ForwardService 复用，尚未定论（见 WARN-002）"
+
+  - id: "CAND-002"
+    from: "code.backend.forward_order_job"
+    to: "code.backend.forward_service"
+    type: "references"
+    confidence: "probable"
+    note: "ForwardOrderJob 异步编排与 ForwardService 同步执行的协作关系需复核"
+
+## INFO（普通发现）
+
+info:
+  - "模块域：组织人事 / 基础数据 / 渠道 / 订单 / 合同 / 项目 / 财务 / 报表，共 9 模块。"
+  - "数据库迁移 80+ 个；2026_09_01_090000 新增 third_channels.role 字段。"
+  - "前端 Quasar2（src/pages、src/api、src/stores）与后端 /api/v1、/api/v2 对齐。"
+  - "测试目录 test/ 含 mock-servers、t17/t19-t21 e2e。"
+
+## 需技术总监决策的开放项
+
+open_questions:
+  - "quanyu_orders 32,561 行孤儿数据：归档 or 删除？已有数据如何处置？"
+  - "OrderProcessListener / AsyncOrderAuditListener：注册 or 删除？"
+  - "PushService 与 ForwardService 是否收敛统一判定组件？"

@@ -1,0 +1,38 @@
+# 关系索引（generated / 自动生成）
+
+generated_at: "2026-09-02"
+
+relations:
+  - { id: "rel.channel.product", from: "business.channel", to: "business.product", type: "has", strength: "strong" }
+  - { id: "rel.product.business", from: "business.product", to: "business.business", type: "belongs_to", strength: "strong" }
+  - { id: "rel.product.carrier", from: "business.product", to: "business.carrier", type: "belongs_to", strength: "normal" }
+  - { id: "rel.order.channel", from: "business.product_order", to: "business.channel", type: "belongs_to", strength: "strong" }
+  - { id: "rel.order.product", from: "business.product_order", to: "business.product", type: "references", strength: "strong" }
+  - { id: "rel.forward.order", from: "business.forward_order", to: "business.product_order", type: "references", strength: "strong" }
+  - { id: "rel.forward.channel", from: "business.forward_order", to: "business.channel", type: "belongs_to", strength: "strong" }
+  - { id: "rel.forward.quanyu", from: "business.forward_order", to: "business.quanyu_order", type: "replaced_by", strength: "critical" }
+  - { id: "rel.contract.organization", from: "business.master_contract", to: "business.organization", type: "belongs_to", strength: "normal" }
+  - { id: "rel.execution.master_contract", from: "business.execution_contract", to: "business.master_contract", type: "belongs_to", strength: "strong" }
+
+  - { id: "rel.order_business_module", from: "business.product_order", to: "module.order", type: "implemented_by", strength: "critical" }
+  - { id: "rel.order_api_controller", from: "api.third-channel.receive", to: "code.backend.receiver_controller", type: "implemented_by", strength: "critical" }
+  - { id: "rel.receiver_forward_service", from: "code.backend.receiver_controller", to: "code.backend.forward_service", type: "calls", strength: "critical" }
+  - { id: "rel.forward_service_config_loader", from: "code.backend.forward_service", to: "code.backend.channel_config_loader", type: "uses", strength: "strong" }
+  - { id: "rel.forward_service_data_mapper", from: "code.backend.forward_service", to: "code.backend.data_mapper", type: "uses", strength: "strong" }
+  - { id: "rel.forward_service_sign", from: "code.backend.forward_service", to: "code.backend.sign_service", type: "uses", strength: "strong" }
+  - { id: "rel.forward_model_table", from: "code.model.forward_order", to: "db.table.forward_orders", type: "stored_in", strength: "critical" }
+  - { id: "rel.order_model_table", from: "code.model.product_order", to: "db.table.product_orders", type: "stored_in", strength: "critical" }
+  - { id: "rel.channel_model_table", from: "code.model.third_channels", to: "db.table.third_channels", type: "stored_in", strength: "critical" }
+  - { id: "rel.receiver_process_job", from: "code.backend.receiver_controller", to: "code.backend.process_order_job", type: "triggers", strength: "strong" }
+
+  - { id: "rel.db_third_channels_org", from: "db.table.third_channels", to: "db.table.organizations", type: "references", strength: "normal" }
+  - { id: "rel.db_channel_products_channel", from: "db.table.channel_products", to: "db.table.third_channels", type: "references", strength: "strong" }
+  - { id: "rel.db_channel_products_product", from: "db.table.channel_products", to: "db.table.products", type: "references", strength: "strong" }
+  - { id: "rel.db_products_business", from: "db.table.products", to: "db.table.business", type: "references", strength: "strong" }
+  - { id: "rel.db_products_carrier", from: "db.table.products", to: "db.table.carrier", type: "references", strength: "normal" }
+  - { id: "rel.db_forward_source_channel", from: "db.table.forward_orders", to: "db.table.third_channels", type: "references", strength: "strong" }
+  - { id: "rel.db_forward_target_channel", from: "db.table.forward_orders", to: "db.table.third_channels", type: "references", strength: "strong" }
+
+  - { id: "rel.module_order_depends_channel", from: "module.order", to: "module.channel", type: "depends_on", strength: "critical" }
+  - { id: "rel.module_order_depends_business_data", from: "module.order", to: "module.business-data", type: "depends_on", strength: "critical" }
+  - { id: "rel.module_report_depends_order", from: "module.report", to: "module.order", type: "depends_on", strength: "strong" }

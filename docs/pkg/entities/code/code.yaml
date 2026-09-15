@@ -1,0 +1,191 @@
+# 代码实体（关键实现）
+
+# 订单接收入口
+code.backend.receiver_controller:
+  id: "code.backend.receiver_controller"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "ReceiverController"
+  path: "app/Http/Controllers/API/ThirdChannel/ReceiverController.php"
+  module: "module.order"
+  class: "App\\Http\\Controllers\\API\\ThirdChannel\\ReceiverController"
+  responsibility:
+    - "v2 订单接收（store）与状态更新（update）"
+    - "验证码提交（verifySubmit）触发 submit 步骤"
+    - "转发记录查询（queryForward）"
+    - "自动中转判定与创建（dispatchForwardIfNeeded）"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 中转转发放核心
+code.backend.forward_service:
+  id: "code.backend.forward_service"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "ForwardService"
+  path: "app/Services/ThirdChannel/ForwardService.php"
+  module: "module.order"
+  class: "App\\Services\\ThirdChannel\\ForwardService"
+  responsibility:
+    - "同步执行单步转发（executeStep：getCode=0 / submit=1）"
+    - "合并 source_data + step_data + 请求映射 + 签名 + HTTP 推送 + 结果判定"
+    - "成功判定优先级：步骤级 success_rule > 渠道级 push_success_rule > 默认 data.code==00000"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 目标解析
+code.backend.channel_config_loader:
+  id: "code.backend.channel_config_loader"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "ChannelConfigLoader"
+  path: "app/Services/ThirdChannel/ChannelConfigLoader.php"
+  module: "module.channel"
+  class: "App\\Services\\ThirdChannel\\ChannelConfigLoader"
+  responsibility:
+    - "加载目标渠道配置"
+    - "目标解析：auto_forward + forward_target_pid > ext_config.target_pid（legacy fallback）"
+    - "推送 URL / 超时解析"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 数据映射
+code.backend.data_mapper:
+  id: "code.backend.data_mapper"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "DataMapper"
+  path: "app/Services/ThirdChannel/DataMapper.php"
+  module: "module.order"
+  class: "App\\Services\\ThirdChannel\\DataMapper"
+  responsibility: ["按 request_mapping 将 A 数据映射为 B 请求字段", "按 output_mapping 提取步骤输出（如 linkId）"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 签名
+code.backend.sign_service:
+  id: "code.backend.sign_service"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "SignService"
+  path: "app/Services/ThirdChannel/SignService.php"
+  module: "module.channel"
+  class: "App\\Services\\ThirdChannel\\SignService"
+  responsibility: ["请求签名生成", "渠道签名配置解析"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 回调解释器
+code.backend.callback_interpreter:
+  id: "code.backend.callback_interpreter"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "CallbackInterpreter"
+  path: "app/Services/ThirdChannel/CallbackInterpreter.php"
+  module: "module.order"
+  class: "App\\Services\\ThirdChannel\\CallbackInterpreter"
+  responsibility: ["回调 payload 解释（默认解释器 + 省份订单解释器）", "F2 回调缺陷相关（任务 T-18）"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 订单处理 Job
+code.backend.process_order_job:
+  id: "code.backend.process_order_job"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "ProcessOrderJob"
+  path: "app/Jobs/ProcessOrderJob.php"
+  module: "module.order"
+  class: "App\\Jobs\\ProcessOrderJob"
+  responsibility: ["异步处理接收订单（写入数据库、业务链路校验）"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 中转异步 Job
+code.backend.forward_order_job:
+  id: "code.backend.forward_order_job"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "ForwardOrderJob"
+  path: "app/Jobs/ForwardOrderJob.php"
+  module: "module.order"
+  class: "App\\Jobs\\ForwardOrderJob"
+  responsibility: ["异步中转编排（区别于 ForwardService 的同步执行）"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 统一推送服务
+code.backend.push_service:
+  id: "code.backend.push_service"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "PushService"
+  path: "app/Services/PushService.php"
+  module: "module.order"
+  class: "App\\Services\\PushService"
+  responsibility: ["统一手动/定时推送的 HTTP + 成功规则判定"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 规则引擎
+code.backend.rule_engine:
+  id: "code.backend.rule_engine"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "RuleEngine"
+  path: "app/Services/RuleEngine.php"
+  module: "module.order"
+  class: "App\\Services\\RuleEngine"
+  responsibility: ["业务规则引擎（读取 business_rules）"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 模型
+code.model.third_channels:
+  id: "code.model.third_channels"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "ThirdChannels"
+  path: "app/Models/ThirdChannels.php"
+  module: "module.channel"
+  class: "App\\Models\\ThirdChannels"
+  responsibility: ["渠道模型；role/method 常量定义；Auditable 审计"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+code.model.forward_order:
+  id: "code.model.forward_order"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "ForwardOrder"
+  path: "app/Models/ForwardOrder.php"
+  module: "module.order"
+  class: "App\\Models\\ForwardOrder"
+  responsibility: ["中转记录模型；forward_status/callback_status 常量"]
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+code.model.product_order:
+  id: "code.model.product_order"
+  type: "code"
+  language: "php"
+  framework: "laravel"
+  name: "ProductOrder"
+  path: "app/Models/ProductOrder.php"
+  module: "module.order"
+  class: "App\\Models\\ProductOrder"
+  responsibility: ["产品订单模型"]
+  source: ["verified_code"]
+  confidence: "confirmed"

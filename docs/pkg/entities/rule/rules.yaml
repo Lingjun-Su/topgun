@@ -1,0 +1,65 @@
+# 业务规则实体
+
+# 渠道角色规则
+rule.channel_role:
+  id: "rule.channel_role"
+  type: "business_rule"
+  name: "渠道角色判定规则"
+  owner: "module.channel"
+  description: "第三方渠道身份角色只能由 role 字段决定（supplier_a / channel_c / unset），与 method 能力位（接收/发送/转发）正交；禁止以 method 反推 role。"
+  source: ["business_rule", "verified_code"]
+  confidence: "confirmed"
+  constraints:
+    - "role 与 method 是两个正交维度"
+    - "业务代码中身份判定一律使用 role"
+    - "实测 CDLD/HBGY method 均为『转发』，role 分属 A/C"
+
+# 推送成功判定规则
+rule.push_success:
+  id: "rule.push_success"
+  type: "business_rule"
+  name: "推送成功判定规则"
+  owner: "module.order"
+  description: "多步骤推送每步成功判定优先级：步骤级 success_rule > 渠道级 push_success_rule > 默认 data.code=='00000'。规则已配置但未匹配时直接判失败，不继续降级。"
+  source: ["business_rule", "verified_code"]
+  confidence: "confirmed"
+  constraints:
+    - "默认成功格式：data.code == '00000'"
+    - "HTTP 200 且响应体非 JSON 时按默认视为成功"
+
+# 签名鉴权规则
+rule.signature_auth:
+  id: "rule.signature_auth"
+  type: "business_rule"
+  name: "渠道签名鉴权规则"
+  owner: "module.channel"
+  description: "v2 第三方渠道接口以渠道签名（VerifyChannelSignature 中间件）+ 限流鉴权；请求经 log.api 记录。"
+  source: ["business_rule", "verified_code"]
+  confidence: "confirmed"
+
+# 订单状态机（产品订单）
+rule.order_state_machine:
+  id: "rule.order_state_machine"
+  type: "business_rule"
+  name: "产品订单状态机"
+  owner: "module.order"
+  description: "产品订单 order_status 流转；验证码提交成功置为 1（首次订购）；1 为终态不回退。"
+  source: ["verified_code", "agent_inference"]
+  confidence: "probable"
+  states: [0, 1]
+  transitions:
+    - { from: 0, to: 1, note: "验证码提交成功（FORWARD_VERIFY）" }
+  constraints:
+    - "5 分钟内防重复：已非未付款且 5 分钟内被更新则只追加日志不改状态"
+
+# 中转目标解析规则
+rule.forward_target_resolution:
+  id: "rule.forward_target_resolution"
+  type: "business_rule"
+  name: "中转目标解析规则"
+  owner: "module.order"
+  description: "目标渠道解析优先级：auto_forward + forward_target_pid（新）> ext_config.target_pid（legacy fallback）。forward_target_pid 自指向（== 自身 pid）是合法模式，表示复用本渠道行的 push_base_url + push_steps。"
+  source: ["business_rule", "verified_code"]
+  confidence: "confirmed"
+  constraints:
+    - "不能把自指向当作错误或过滤掉"

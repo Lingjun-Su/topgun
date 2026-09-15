@@ -1,0 +1,138 @@
+# 模块实体（Module）
+
+module.auth:
+  id: "module.auth"
+  type: "module"
+  name: "认证与系统模块"
+  description: "登录/登出/注册、用户、权限、失败任务、通知、审计。"
+  owner: "technical-director"
+  responsibilities:
+    - "用户登录/登出/注册"
+    - "Sanctum 令牌与 data.permission 鉴权"
+    - "用户与密码管理"
+    - "failed-jobs 重试/清理"
+  forbidden_responsibilities:
+    - "干预渠道订单业务规则"
+  entry_points: ["api.auth", "api.users"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+module.org-hr:
+  id: "module.org-hr"
+  type: "module"
+  name: "组织人事模块"
+  description: "组织/公司/部门/岗位/员工/地区的管理与银行账户。"
+  owner: "technical-director"
+  responsibilities:
+    - "组织树与组织合作关系"
+    - "部门/岗位/员工增删改查"
+    - "员工离职/复职/调岗/分配"
+    - "地区与字典"
+  entry_points: ["api.organizations", "api.departments", "api.positions", "api.employees"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+module.business-data:
+  id: "module.business-data"
+  type: "module"
+  name: "基础数据模块"
+  description: "运营商、业务、产品、产品省份、字典、渠道产品配置。"
+  owner: "technical-director"
+  responsibilities:
+    - "运营商/业务/产品维护"
+    - "产品省份配置"
+    - "渠道与产品的归属关系（channel_products）"
+  entry_points: ["api.carriers", "api.businesses", "api.products"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+module.channel:
+  id: "module.channel"
+  type: "module"
+  name: "渠道管理模块"
+  description: "第三方渠道（A/C）管理：身份、能力位、签名、推送配置、中转配置。"
+  owner: "technical-director"
+  responsibilities:
+    - "渠道增删改查（role / method / 签名 / ip 白名单）"
+    - "渠道推送步骤与成功规则配置（push_steps / push_success_rule）"
+    - "中转目标配置（auto_forward + forward_target_pid）"
+    - "渠道下产品配置"
+  forbidden_responsibilities:
+    - "不得在业务代码中以 method 反推 role"
+  entry_points: ["api.channels", "api.channel-products"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+module.order:
+  id: "module.order"
+  type: "module"
+  name: "订单接入与转发模块"
+  description: "订单接收、状态更新、数据中转转发（forward_orders）、回调与追踪。"
+  owner: "technical-director"
+  responsibilities:
+    - "接收 A 公司订单（v2 签名鉴权）"
+    - "多步骤中转编排（ForwardOrder + ForwardService）"
+    - "订单状态流转与状态流水"
+    - "回调推送与回调日志"
+    - "全链路追踪"
+  forbidden_responsibilities:
+    - "不直接写 quanyu_orders / tianxuan（已废弃/死代码）"
+  entry_points: ["api.third-channel", "api.product-orders", "api.trace"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+module.contract:
+  id: "module.contract"
+  type: "module"
+  name: "合同模块"
+  description: "框架合同与执行合同的审核流转。"
+  owner: "technical-director"
+  responsibilities:
+    - "框架合同 CRUD + 提交/撤回/审核/废止/到期/条款"
+    - "合同拆分（split）生成执行合同"
+    - "执行合同审核流转"
+  entry_points: ["api.contracts"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+module.project:
+  id: "module.project"
+  type: "module"
+  name: "项目管理模块"
+  description: "项目、投标、分包、结算管理。"
+  owner: "technical-director"
+  responsibilities: ["项目 CRUD", "投标/分包", "项目结算"]
+  entry_points: ["api.projects"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+module.finance:
+  id: "module.finance"
+  type: "module"
+  name: "财务模块"
+  description: "结算、应收/应付、发票、薪酬、税务申报。"
+  owner: "technical-director"
+  responsibilities: ["结算明细", "应收/应付", "发票", "薪酬", "税务申报"]
+  entry_points: ["api.settlements"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+module.report:
+  id: "module.report"
+  type: "module"
+  name: "报表模块"
+  description: "产品订单简报/图表/饼图/今日数据/业务统计。"
+  owner: "technical-director"
+  responsibilities: ["订单报表", "推送统计 overview", "业务统计"]
+  entry_points: ["api.reports", "api.push-stats"]
+  status: "active"
+  source: ["verified_code"]
+  confidence: "confirmed"

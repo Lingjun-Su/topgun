@@ -1,0 +1,22 @@
+id: "ADR-001"
+title: "废弃 quanyu_orders，统一多步推送到 forward_orders"
+status: "accepted"
+date: "2026-08"
+deciders: ["technical-director"]
+reference: "doc/需求与设计/order-channel-refactor/modification-v4/修改方案-v4-废弃quanyu统一forward.html"
+
+context:
+  - "系统存在两套平行推送实现：quanyu_orders（订单业务+推送结果）与 forward_orders（中转编排+多步骤状态）。"
+  - "quanyu_orders 写路径已断裂（QuanyuOrderRequest 未接路由、QuanyuService::store 未被调用、OrderProcessJob 仅命中 pid==='186'），32,561 行孤儿数据 sync_status=0。"
+  - "多步推送（getCode → submit）需要步骤级状态、请求/响应快照、成功规则判定，quanyu 结构无法承载。"
+
+decision:
+  - "多步骤推送统一走 forward_orders（ForwardOrder + ForwardService.executeStep）。"
+  - "quanyu_orders 标记为废弃（DEPRECATED），写路径不再维护。"
+  - "订单业务字段以 product_orders 为正本；forward_orders 负责中转编排。"
+
+consequences:
+  - "读/取消/重试/统计/追踪路径对 quanyu_orders 的残留引用需逐步清理（任务 T-11）。"
+  - "32,561 行 quanyu 孤儿数据处置方案待定（归档或删除）。"
+
+source: ["adr"]

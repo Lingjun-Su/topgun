@@ -1,0 +1,92 @@
+# 业务关系（business ↔ business）
+
+relations:
+  - id: "rel.channel.product"
+    from: "business.channel"
+    to: "business.product"
+    type: "has"
+    strength: "strong"
+    reason: "渠道通过 channel_products 拥有可下单产品（订单校验依据）"
+    source: ["verified_code", "database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.product.business"
+    from: "business.product"
+    to: "business.business"
+    type: "belongs_to"
+    strength: "strong"
+    reason: "产品归属业务（products.business_id → business.id；订单 bus_code 校验走 business.code）"
+    source: ["verified_code", "database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.product.carrier"
+    from: "business.product"
+    to: "business.carrier"
+    type: "belongs_to"
+    strength: "normal"
+    reason: "产品归属运营商（products.carrier_id → carrier.id）"
+    source: ["database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.order.channel"
+    from: "business.product_order"
+    to: "business.channel"
+    type: "belongs_to"
+    strength: "strong"
+    reason: "产品订单归属来源渠道（product_orders.pid / channel_id）"
+    source: ["verified_code", "database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.order.product"
+    from: "business.product_order"
+    to: "business.product"
+    type: "references"
+    strength: "strong"
+    reason: "订单引用产品（product_id → 定价）"
+    source: ["verified_code", "database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.forward.order"
+    from: "business.forward_order"
+    to: "business.product_order"
+    type: "references"
+    strength: "strong"
+    reason: "中转记录与来源订单通过 source_order_no + source_pid 关联"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.forward.channel"
+    from: "business.forward_order"
+    to: "business.channel"
+    type: "belongs_to"
+    strength: "strong"
+    reason: "中转记录关联源渠道与目标渠道（source_channel_id/target_channel_id）"
+    source: ["verified_code", "database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.forward.quanyu"
+    from: "business.forward_order"
+    to: "business.quanyu_order"
+    type: "replaced_by"
+    strength: "critical"
+    reason: "forward_orders 取代 quanyu_orders 作为统一中转编排（quanyu 已废弃）"
+    source: ["adr", "business_rule"]
+    confidence: "confirmed"
+
+  - id: "rel.contract.organization"
+    from: "business.master_contract"
+    to: "business.organization"
+    type: "belongs_to"
+    strength: "normal"
+    reason: "合同归属组织主体"
+    source: ["database_schema"]
+    confidence: "probable"
+
+  - id: "rel.execution.master_contract"
+    from: "business.execution_contract"
+    to: "business.master_contract"
+    type: "belongs_to"
+    strength: "strong"
+    reason: "执行合同由框架合同拆分（contract/split）"
+    source: ["api_contract", "verified_code"]
+    confidence: "confirmed"

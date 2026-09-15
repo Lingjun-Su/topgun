@@ -1,0 +1,67 @@
+# 状态 / 枚举实体
+
+# 产品订单状态
+state.product_order_status:
+  id: "state.product_order_status"
+  type: "state"
+  name: "产品订单状态（order_status）"
+  owner: "module.order"
+  values:
+    - { value: 0, name: "未付款", note: "接收后初始状态" }
+    - { value: 1, name: "首次订购", note: "验证码提交成功" }
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 中转状态
+state.forward_status:
+  id: "state.forward_status"
+  type: "state"
+  name: "中转状态（forward_status）"
+  owner: "module.order"
+  values:
+    - { value: 0, name: "待处理", const: "STATUS_PENDING" }
+    - { value: 1, name: "成功", const: "STATUS_SUCCESS" }
+    - { value: 2, name: "失败", const: "STATUS_FAILED" }
+    - { value: 4, name: "待验证", const: "STATUS_VERIFYING" }
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 回调状态
+state.callback_status:
+  id: "state.callback_status"
+  type: "state"
+  name: "回调状态（callback_status）"
+  owner: "module.order"
+  values:
+    - { value: 0, name: "待回调", const: "CALLBACK_PENDING" }
+    - { value: 1, name: "成功", const: "CALLBACK_SUCCESS" }
+    - { value: 2, name: "失败", const: "CALLBACK_FAILED" }
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 渠道角色
+state.channel_role:
+  id: "state.channel_role"
+  type: "state"
+  name: "渠道身份角色（role）"
+  owner: "module.channel"
+  values:
+    - { value: "supplier_a", name: "上游供应商 A", const: "ROLE_SUPPLIER_A" }
+    - { value: "channel_c", name: "下游推广渠道 C", const: "ROLE_CHANNEL_C" }
+    - { value: "unset", name: "未指定", const: "ROLE_UNSET" }
+  source: ["verified_code"]
+  confidence: "confirmed"
+
+# 渠道能力位
+state.channel_method:
+  id: "state.channel_method"
+  type: "state"
+  name: "渠道能力位（method）"
+  owner: "module.channel"
+  values:
+    - { value: "接收", name: "入站方（A/C 发起或回调）", const: "METHOD_RECEIVE" }
+    - { value: "发送", name: "出站目标（单步推送）", const: "METHOD_SEND" }
+    - { value: "转发", name: "收单 + 本渠道推送（自指向模式）", const: "METHOD_FORWARD" }
+  note: "与 role 正交，禁止用 method 反推 role。"
+  source: ["verified_code"]
+  confidence: "confirmed"

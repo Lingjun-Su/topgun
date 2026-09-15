@@ -1,0 +1,41 @@
+# 外部系统实体
+
+# 上游供应商（A 侧）
+external.upstream_supplier:
+  id: "external.upstream_supplier"
+  type: "external_system"
+  name: "上游供应商（A 侧）"
+  description: "向下单方（A 公司）调用本系统 v2 接收接口推送订单；在 third_channels 中以 role=supplier_a 的渠道行体现（如 CDLD、HBGY）。"
+  owner: "module.order"
+  status: "active"
+  source: ["verified_code", "agent_inference"]
+  confidence: "probable"
+  attributes:
+    examples: ["CDLD", "HBGY"]
+  last_verified: "2026-09-02"
+
+# 下游推广公司（C 侧）
+external.downstream_channel:
+  id: "external.downstream_channel"
+  type: "external_system"
+  name: "下游推广公司（C 侧）"
+  description: "本系统转发订单的目标推广方（C 公司）；在 third_channels 中以 role=channel_c 的渠道行体现。"
+  owner: "module.order"
+  status: "active"
+  source: ["verified_code", "agent_inference"]
+  confidence: "probable"
+  last_verified: "2026-09-02"
+
+# 移动接口（实际推送上游）
+external.mobile_endpoint:
+  id: "external.mobile_endpoint"
+  type: "external_system"
+  name: "移动接口（推送目标上游）"
+  description: "多步骤推送（getCode/submit）的真实外部目标；CDLD 与 HBGY 的 push_base_url 均指向同一上游。"
+  owner: "module.order"
+  status: "active"
+  source: ["verified_code", "agent_inference"]
+  confidence: "probable"
+  attributes:
+    push_base_url: "http://47.108.207.134:8080"
+  last_verified: "2026-09-02"

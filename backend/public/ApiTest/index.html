@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>订单枢纽 · 测试平台</title>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --primary: #6366f1;
+  --primary-light: #eef2ff;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color: var(--text);
+  padding: 20px;
+  min-height: 100vh;
+}
+.container { max-width: 1500px; margin: 0 auto; }
+
+/* 头部 */
+.header {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px 28px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary), #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header-badge {
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 标签页 */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  overflow-x: auto;
+}
+.tab-btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab-btn:hover { background: #f1f5f9; color: var(--text); }
+.tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* 卡片 */
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 表单 */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.field input, .field select, .field textarea {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  transition: 0.2s;
+  background: #fff;
+  color: var(--text);
+}
+.field input:focus, .field select:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+
+/* 按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 22px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+
+/* 日志区域 */
+.log-area {
+  background: #1e293b;
+  color: #94a3b8;
+  border-radius: 10px;
+  padding: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+.log-line { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.log-success { color: #4ade80; }
+.log-error { color: #f87171; }
+.log-warning { color: #fbbf24; }
+.log-info { color: #94a3b8; }
+
+/* 响应输出 */
+.response-box {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  font-family: monospace;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin-top: 14px;
+}
+
+/* 进度条 */
+.progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 0.3s;
+  width: 0;
+}
+
+/* 映射面板 */
+.mapping-panel {
+  background: #fafcff;
+  border: 1px solid #e2edff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+}
+.mapping-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  background: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ecf3fa;
+}
+.mapping-row .excel-col {
+  font-weight: 700;
+  min-width: 120px;
+  background: #eef2ff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--primary);
+}
+.mapping-row select { min-width: 150px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+.mapping-row input { min-width: 120px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+
+/* 预览表格 */
+.preview-table { max-height: 260px; overflow: auto; font-size: 12px; border: 1px solid var(--border); border-radius: 10px; margin-top: 12px; }
+.preview-table table { width: 100%; border-collapse: collapse; }
+.preview-table th { background: #f8fafc; position: sticky; top: 0; padding: 8px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.preview-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+
+/* 托底配置 */
+.fallback-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+.fallback-grid .field label { font-size: 11px; }
+.fallback-grid .field input,
+.fallback-grid .field select { padding: 6px 8px; font-size: 12px; }
+
+/* 数据监控 - 表格 */
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.data-table-wrap { overflow-x: auto; }
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th {
+  background: #f8fafc;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.data-table tr:hover { background: #f8fafc; }
+
+/* 状态标签 */
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.status-badge:hover { opacity: 0.8; }
+.st-0 { background: #6b7280; }
+.st-1 { background: var(--success); }
+.st-2 { background: var(--primary); }
+.st-3 { background: var(--danger); }
+
+/* 同步状态 */
+.sync-ok { color: var(--success); font-weight: 600; }
+.sync-pending { color: var(--warning); font-weight: 600; }
+
+/* 弹窗 */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: #fff;
+  border-radius: 16px;
+  width: 560px;
+  max-width: 90vw;
+  max-height: 80vh;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  overflow: hidden;
+  animation: modalIn 0.2s ease;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-header h3 { font-size: 16px; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: 0.2s;
+}
+.modal-close:hover { background: #e2e8f0; }
+.modal-body { padding: 20px 24px; max-height: 50vh; overflow-y: auto; }
+.trace-item {
+  border-left: 3px solid var(--primary);
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 0 8px 8px 0;
+}
+.trace-item .trace-status { font-weight: 700; color: var(--text); }
+.trace-item .trace-time { font-size: 12px; color: var(--text-muted); margin-left: 10px; }
+.trace-item .trace-detail { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+/* 分页 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 12px 0;
+}
+.pagination .page-info { font-size: 13px; color: var(--text-muted); }
+
+/* 操作栏 */
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 16px;
+}
+.action-bar .loading { display: none; font-size: 13px; color: var(--primary); font-weight: 600; }
+.action-bar .loading.show { display: inline; }
+
+/* 批量配置 */
+.batch-config {
+  background: #f9f9f9;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 16px 0 10px;
+}
+.batch-config h4 { font-size: 14px; margin-bottom: 14px; color: #2c3e50; border-left: 4px solid var(--primary); padding-left: 12px; }
+.config-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 12px; }
+.config-item { flex: 1; min-width: 130px; }
+.config-item label { font-weight: 600; font-size: 12px; margin-bottom: 4px; display: block; color: var(--text-muted); }
+.config-item input, .config-item select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; width: 100%; }
+
+/* 文件上传区 */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s;
+  margin-bottom: 12px;
+}
+.upload-zone:hover { border-color: var(--primary); background: var(--primary-light); }
+.upload-zone.has-file { border-color: var(--success); background: #f0fdf4; }
+.upload-zone .upload-icon { font-size: 32px; margin-bottom: 8px; }
+.upload-zone .upload-text { font-size: 14px; color: var(--text-muted); }
+.upload-zone .upload-file { display: none; }
+
+/* 响应式 */
+@media (max-width: 768px) {
+  body { padding: 10px; }
+  .header { padding: 16px 18px; }
+  .header h1 { font-size: 18px; }
+  .card { padding: 16px; }
+  .grid { grid-template-columns: 1fr; }
+  .tabs { flex-wrap: nowrap; }
+  .tab-btn { padding: 10px 14px; font-size: 13px; min-width: 90px; }
+  .filter-bar { grid-template-columns: 1fr 1fr; }
+  .config-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 头部 -->
+  <div class="header">
+    <div>
+      <h1>订单枢纽 · 测试平台</h1>
+      <span style="font-size: 13px; color: var(--text-muted);">Laravel + SQL Server | 签名推送 · Excel导入 · 数据监控</span>
+    </div>
+    <span class="header-badge">v2.0 整合版</span>
+  </div>
+
+  <!-- 全局API配置 -->
+  <div class="card" style="padding: 16px 20px;">
+    <div class="grid" style="grid-template-columns: 1fr 1fr auto;">
+      <div class="field">
+        <label>API 目标地址</label>
+        <select id="targetUrl">
+          <option value="http://127.0.0.1:8000/api/v2/third-channel-test">本地测试 (127.0.0.1:8000)</option>
+          <option value="http://127.0.0.1:8000/api/v2/third-channel">本地正式 (127.0.0.1:8000)</option>
+          <option value="http://159.75.226.248:8080/api/v2/third-channel-test">服务器测试</option>
+          <option value="http://159.75.226.248:8080/api/v2/third-channel">服务器正式</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>通信密钥 (App Secret)</label>
+        <input type="password" id="appSecret" value="189">
+      </div>
+      <div class="field" style="justify-content: flex-end;">
+        <label style="opacity:0;">操作</label>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('appSecret').type=document.getElementById('appSecret').type==='password'?'text':'password'">显示/隐藏密钥</button>
+      </div>
+    </div>
+    <!-- 登录区域（用于推送/转发等需认证接口） -->
+    <div class="grid" style="grid-template-columns: 1fr 1fr 1fr auto; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+      <div class="field">
+        <label>登录手机号</label>
+        <input type="text" id="loginPhone" value="18688414383" placeholder="管理员手机号">
+      </div>
+      <div class="field">
+        <label>登录密码</label>
+        <input type="password" id="loginPassword" value="123456" placeholder="密码">
+      </div>
+      <div class="field">
+        <label>认证状态</label>
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 0;">
+          <span id="loginStatus" style="font-size:13px;color:var(--text-muted);">未登录</span>
+        </div>
+      </div>
+      <div class="field" style="justify-content: flex-end;">
+        <label style="opacity:0;">操作</label>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" id="btnLogin" onclick="doLogin()">🔑 登录</button>
+          <button class="btn btn-outline btn-sm" id="btnLogout" onclick="doLogout()" style="display:none;">退出</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 标签页 -->
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="tab-manual" role="tab">✍️ 手动提交</button>
+    <button class="tab-btn" data-tab="tab-excel" role="tab">📎 Excel导入</button>
+    <button class="tab-btn" data-tab="tab-monitor" role="tab">📊 数据监控</button>
+    <button class="tab-btn" data-tab="tab-push" role="tab">🚀 推送测试</button>
+    <button class="tab-btn" data-tab="tab-forward" role="tab">🔄 转发测试</button>
+    <button class="tab-btn" data-tab="tab-verify" role="tab">✉️ 验证码转发</button>
+  </div>
+
+  <!-- ==================== Tab 1: 手动提交 ==================== -->
+  <div class="tab-content active" id="tab-manual">
+    <div class="card">
+      <div class="card-title">✍️ 单条订单手动提交</div>
+      <div class="grid" id="manualForm">
+        <div class="field"><label>渠道 pid</label><input type="text" id="m_pid" value="189"></div>
+        <div class="field"><label>业务 bus_code</label><input type="text" id="m_bus_code" value="001"></div>
+        <div class="field"><label>产品 sku_code</label><input type="text" id="m_sku_code" value="002"></div>
+        <div class="field"><label>订单号 (order_no)</label><input type="text" id="m_order_no" placeholder="自动生成"></div>
+        <div class="field"><label>会员手机</label><input type="text" id="m_user_phone" value="13812345678"></div>
+        <div class="field"><label>会员昵称</label><input type="text" id="m_user_nick" value="测试昵称"></div>
+        <div class="field"><label>订购时间</label><input type="datetime-local" id="m_order_time"></div>
+        <div class="field"><label>单价 (price)</label><input type="number" step="0.01" id="m_price" value="99.00"></div>
+        <div class="field"><label>数量</label><input type="number" id="m_quantity" value="1"></div>
+        <div class="field"><label>总额 (total_amount)</label><input type="number" step="0.01" id="m_total" value="99.00"></div>
+        <div class="field"><label>省份代码</label><input id="m_province" value="44"></div>
+        <div class="field"><label>城市代码</label><input id="m_city" value="4401"></div>
+        <div class="field"><label>订单状态</label>
+          <select id="m_order_status">
+            <option value="1">1: 首次订购</option>
+            <option value="2">2: 继订中</option>
+            <option value="3">3: 退订</option>
+            <option value="0">0: 未付款</option>
+          </select>
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btnPost">➕ POST 新增</button>
+        <button class="btn btn-outline" id="btnResetManual">⟳ 重置</button>
+        <span class="loading" id="singleLoading">⏳ 推送中...</span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:14px;">
+        <div class="response-box" id="singleResponse" style="flex:1; margin-top:0;">等待操作...</div>
+        <button class="btn btn-outline btn-sm" onclick="copyResponse()" style="align-self:flex-start;" title="复制响应内容">📋 复制</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Tab 2: Excel导入 ==================== -->
+  <div class="tab-content" id="tab-excel">
+    <div class="card">
+      <div class="card-title">📎 Excel 智能导入 · 批量推送</div>
+
+      <!-- 上传区域 -->
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">📂</div>
+        <div class="upload-text">点击选择 Excel 文件，或拖拽到此处</div>
+        <input type="file" class="upload-file" id="excelFile" accept=".xlsx,.xls,.csv">
+      </div>
+
+      <!-- 解析选项 -->
+      <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); margin-bottom: 14px;">
+        <div class="field">
+          <label>表头行索引</label>
+          <select id="headerRowIndex">
+            <option value="0">第1行作为列名</option>
+            <option value="1">第2行作为列名</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>缺失订单号自动生成</label>
+          <select id="autoGenOrder">
+            <option value="1">是 (EXCEL_时间戳+序号)</option>
+            <option value="0">否 (缺失报错)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>推送间隔 (ms)</label>
+          <input type="number" id="excelDelay" value="150" min="50">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-primary" id="parseExcelBtn">🔍 解析 Excel</button>
+        <button class="btn btn-success" id="startExcelPushBtn" disabled>🚀 开始批量推送</button>
+        <button class="btn btn-danger" id="stopExcelPushBtn" disabled>⏹️ 停止</button>
+        <button class="btn btn-outline" id="clearExcelLogBtn">🗑️ 清空日志</button>
+      </div>
+
+      <!-- 映射面板 -->
+      <div id="mappingContainer" class="mapping-panel" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <strong>🧩 列字段映射</strong>
+          <span style="font-size:11px; color:var(--text-muted);">留空则使用下方兜底值</span>
+        </div>
+        <div id="mappingRowsList"></div>
+        <div style="margin-top:14px; background:#f7f9fe; padding:14px; border-radius:10px;">
+          <strong>🛡️ 全局兜底值</strong>
+          <div class="fallback-grid">
+            <div class="field"><label>pid</label><input id="defaultPid" value="189"></div>
+            <div class="field"><label>bus_code</label><input id="defaultBusCode" value="001"></div>
+            <div class="field"><label>sku_code</label><input id="defaultSkuCode" value="002"></div>
+            <div class="field"><label>user_nick</label><input id="defaultUserNick" value="Excel用户"></div>
+            <div class="field"><label>省份</label><input id="defaultProvince" value="44"></div>
+            <div class="field"><label>城市</label><input id="defaultCity" value="4401"></div>
+            <div class="field"><label>订单状态</label><select id="defaultOrderStatusGlobal"><option value="1">1首次订购</option><option value="2">2继订</option></select></div>
+            <div class="field"><label>type</label><input id="defaultType" value="1"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 预览 -->
+      <div id="excelPreviewArea" style="display:none; margin-top:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong>📋 数据预览 (前15行)</strong>
+          <span id="previewTotalRows" style="font-size:12px; color:var(--text-muted);"></span>
+        </div>
+        <div class="preview-table"><div id="previewTable"></div></div>
+      </div>
+
+      <!-- 进度 -->
+      <div class="progress-bar" id="excelProgressBar" style="display:none;">
+        <div class="progress-bar-fill" id="excelProgressFill"></div>
+      </div>
+      <div id="excelLogContainer" class="log-area" style="margin-top:16px;">⚡ 等待解析 Excel 文件...</div>
+    </div>
+  </div>
+
+  <!-- ==================== Tab 3: 数据监控 ==================== -->
+  <div class="tab-content" id="tab-monitor">
+    <div class="card">
+      <div class="card-title">📊 数据推送实时监控</div>
+      <div class="filter-bar">
+        <div class="field"><label>渠道 PID</label><input type="text" id="f_pid" placeholder="全部"></div>
+        <div class="field"><label>订单号</label><input type="text" id="f_order_no" placeholder="模糊搜索"></div>
+        <div class="field"><label>业务标识 (bus_code)</label><input type="text" id="f_bus_code" placeholder="全部"></div>
+        <div class="field"><label>产品标识 (sku_code)</label><input type="text" id="f_sku_code" placeholder="全部"></div>
+        <div class="field"><label>订单状态</label>
+          <select id="f_order_status">
+            <option value="">全部</option>
+            <option value="0">0: 未付款</option>
+            <option value="1">1: 首次订购</option>
+            <option value="2">2: 继订中</option>
+            <option value="3">3: 退订</option>
+          </select>
+        </div>
+        <div class="field"><label>创建日期 (从)</label><input type="date" id="f_date_start"></div>
+        <div class="field" style="display:flex; align-items:flex-end; gap:8px;">
+          <button class="btn btn-primary btn-sm" onclick="fetchOrders(1)">🔍 查询</button>
+          <button class="btn btn-outline btn-sm" onclick="resetFilters()">⟳ 重置</button>
+        </div>
+      </div>
+
+      <div class="data-table-wrap" id="monitorTableWrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:50px;">ID</th>
+              <th>订单号</th>
+              <th style="width:60px;">PID</th>
+              <th>业务/产品</th>
+              <th>手机号</th>
+              <th style="width:90px;">金额</th>
+              <th style="width:90px;">状态</th>
+              <th style="width:70px;">同步</th>
+              <th style="width:140px;">创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="orderTableBody">
+            <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">点击「查询」加载数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <button class="btn btn-outline btn-sm" id="prevPage" onclick="changePage(-1)" disabled>上一页</button>
+        <span class="page-info" id="pageInfo">第 0 / 0 页</span>
+        <button class="btn btn-outline btn-sm" id="nextPage" onclick="changePage(1)" disabled>下一页</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Tab 4: 推送测试 ==================== -->
+<div class="tab-content" id="tab-push">
+  <div class="card">
+    <div class="card-title">🚀 待推送订单（全域订单）</div>
+    <div class="filter-bar">
+      <div class="field"><label>渠道 PID</label><input type="text" id="push_f_pid" placeholder="全部"></div>
+      <div class="field"><label>订单号</label><input type="text" id="push_f_order_no" placeholder="模糊搜索"></div>
+      <div class="field"><label>同步状态</label>
+        <select id="push_f_status">
+          <option value="">全部</option>
+          <option value="0">待处理</option>
+          <option value="1">成功</option>
+          <option value="2">失败</option>
+          <option value="3">已取消</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex; align-items:flex-end; gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="fetchPushOrders(1)">🔍 查询</button>
+        <button class="btn btn-warning btn-sm" onclick="batchRetryPush()">⟳ 批量重试</button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:36px;"><input type="checkbox" id="pushSelectAll" onchange="togglePushAll()"></th>
+            <th style="width:50px;">ID</th>
+            <th>订单号</th>
+            <th style="width:60px;">PID</th>
+            <th>业务/产品</th>
+            <th style="width:80px;">金额</th>
+            <th style="width:70px;">同步状态</th>
+            <th style="width:140px;">创建时间</th>
+            <th style="width:90px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="pushTableBody">
+          <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">请先登录后查询</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <button class="btn btn-outline btn-sm" id="pushPrevPage" onclick="changePushPage(-1)" disabled>上一页</button>
+      <span class="page-info" id="pushPageInfo">第 0 / 0 页</span>
+      <button class="btn btn-outline btn-sm" id="pushNextPage" onclick="changePushPage(1)" disabled>下一页</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Tab 5: 转发测试 ==================== -->
+<div class="tab-content" id="tab-forward">
+  <div class="card">
+    <div class="card-title">🔄 数据中转记录</div>
+    <div class="filter-bar">
+      <div class="field"><label>来源 PID</label><input type="text" id="fwd_f_source_pid" placeholder="全部"></div>
+      <div class="field"><label>源订单号</label><input type="text" id="fwd_f_order_no" placeholder="模糊搜索"></div>
+      <div class="field"><label>手机号</label><input type="text" id="fwd_f_mobile" placeholder="精确搜索"></div>
+      <div class="field"><label>中转状态</label>
+        <select id="fwd_f_status">
+          <option value="">全部</option>
+          <option value="0">待处理</option>
+          <option value="1">成功</option>
+          <option value="2">失败</option>
+          <option value="4">待验证</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex; align-items:flex-end; gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="fetchForwardOrders(1)">🔍 查询</button>
+        <button class="btn btn-warning btn-sm" onclick="batchRetryForward()">⟳ 批量重试</button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:36px;"><input type="checkbox" id="fwdSelectAll" onchange="toggleFwdAll()"></th>
+            <th style="width:50px;">ID</th>
+            <th>源订单号</th>
+            <th>手机号</th>
+            <th style="width:60px;">源PID</th>
+            <th style="width:60px;">目标PID</th>
+            <th style="width:70px;">状态</th>
+            <th style="width:60px;">步骤</th>
+            <th>错误信息</th>
+            <th style="width:140px;">创建时间</th>
+            <th style="width:90px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="forwardTableBody">
+          <tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:40px;">请先登录后查询</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <button class="btn btn-outline btn-sm" id="fwdPrevPage" onclick="changeFwdPage(-1)" disabled>上一页</button>
+      <span class="page-info" id="fwdPageInfo">第 0 / 0 页</span>
+      <button class="btn btn-outline btn-sm" id="fwdNextPage" onclick="changeFwdPage(1)" disabled>下一页</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Tab 6: 验证码转发 ==================== -->
+<div class="tab-content" id="tab-verify">
+  <div class="card">
+    <div class="card-title">✉️ 验证码转发 · 两步流程</div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#166534;">
+      <strong>流程说明：</strong>
+      先在 A 公司提交订单（自动触发转发至 B 公司获取验证码），B 公司返回验证码 ID(linkId)，
+      再通过此页面提交验证码完成最终订单推送。
+    </div>
+
+    <!-- 阶段1：发送验证码 -->
+    <div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;background:#fafcff;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+        <span style="background:var(--primary);color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;">1</span>
+        发送验证码（下单触发 getCode）
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr auto;">
+        <div class="field">
+          <label>手机号</label>
+          <input type="text" id="v_mobile" value="13812345678" placeholder="接收验证码的手机号">
+        </div>
+        <div class="field">
+          <label>渠道 PID</label>
+          <input type="text" id="v_pid" value="189" placeholder="渠道PID">
+        </div>
+        <div class="field" style="justify-content:flex-end;">
+          <label style="opacity:0;">操作</label>
+          <button class="btn btn-primary" id="btnSendCode" onclick="sendVerifyCode()">📤 发送验证码</button>
+        </div>
+      </div>
+      <div class="response-box" id="sendCodeResponse" style="margin-top:12px;font-size:12px;">等待操作...</div>
+    </div>
+
+    <!-- 阶段2：提交验证码 -->
+    <div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;background:#fffbeb;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+        <span style="background:var(--warning);color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;">2</span>
+        提交验证码（触发 submit）
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr 1fr auto;">
+        <div class="field">
+          <label>手机号</label>
+          <input type="text" id="v_submit_mobile" placeholder="与发送时一致">
+        </div>
+        <div class="field">
+          <label>验证码 ID (linkId)</label>
+          <input type="text" id="v_linkId" placeholder="上一步返回的 linkId">
+        </div>
+        <div class="field">
+          <label>验证码 (smsCode)</label>
+          <input type="text" id="v_smsCode" placeholder="收到的短信验证码">
+        </div>
+        <div class="field" style="justify-content:flex-end;">
+          <label style="opacity:0;">操作</label>
+          <button class="btn btn-warning" id="btnSubmitCode" onclick="submitVerifyCode()">✉️ 提交验证码</button>
+        </div>
+      </div>
+      <div class="response-box" id="submitCodeResponse" style="margin-top:12px;font-size:12px;">等待操作...</div>
+    </div>
+
+    <!-- 转发记录查询 -->
+    <div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:#f8fafc;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;justify-content:space-between;">
+        <span>📋 转发记录查询</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin:0;">
+            <input type="text" id="v_query_mobile" placeholder="输入手机号搜索" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:180px;">
+            <button class="btn btn-primary btn-sm" onclick="queryVerifyForwardOrders()">🔍 查询</button>
+          </div>
+        </div>
+      </div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:50px;">ID</th>
+              <th>源订单号</th>
+              <th>手机号</th>
+              <th style="width:60px;">源PID</th>
+              <th style="width:60px;">目标PID</th>
+              <th style="width:70px;">状态</th>
+              <th style="width:60px;">步骤</th>
+              <th>错误信息</th>
+              <th style="width:140px;">创建时间</th>
+              <th style="width:80px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="verifyTableBody">
+            <tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:40px;">输入手机号后查询</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="verifyPagination" style="display:none;">
+        <button class="btn btn-outline btn-sm" id="verifyPrevPage" onclick="changeVerifyPage(-1)" disabled>上一页</button>
+        <span class="page-info" id="verifyPageInfo">第 0 / 0 页</span>
+        <button class="btn btn-outline btn-sm" id="verifyNextPage" onclick="changeVerifyPage(1)" disabled>下一页</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 步骤详情弹窗 -->
+  <div class="modal-overlay" id="stepDetailModal">
+    <div class="modal-box" style="width:700px;">
+      <div class="modal-header">
+        <h3 id="stepModalTitle">步骤详情</h3>
+        <button class="modal-close" onclick="closeStepModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="stepDetailList" style="max-height:60vh;">
+        <div style="text-align:center;color:var(--text-muted);padding:20px;">加载中...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 状态轨迹弹窗 -->
+<div class="modal-overlay" id="traceModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modalTitle">订单状态轨迹</h3>
+      <button class="modal-close" onclick="closeTraceModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="traceList">
+      <div style="text-align:center;color:var(--text-muted);padding:20px;">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================== 全局 ==============================
+const statusMap = {
+  0: { text: '未付款', cls: 'st-0' },
+  1: { text: '首次订购', cls: 'st-1' },
+  2: { text: '继订中', cls: 'st-2' },
+  3: { text: '退订', cls: 'st-3' }
+};
+const API_BASE = document.getElementById('targetUrl') ? '' : '';
+let currentPage = 1;
+
+// ============================== 标签页切换 ==============================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    // 切换到监控tab时自动加载
+    if (btn.dataset.tab === 'tab-monitor') fetchOrders(1);
+  });
+});
+
+// ============================== 通用请求 ==============================
+async function coreRequest(method, url, data, secret) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  const signStr = secret + timestamp + nonce + JSON.stringify(data);
+  const signature = CryptoJS.SHA256(signStr).toString();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-PID': String(data.pid || ''),
+    'X-Signature': signature,
+    'X-Timestamp': timestamp,
+    'X-Nonce': nonce
+  };
+  const response = await fetch(url, { method, headers, body: JSON.stringify(data) });
+  const ct = response.headers.get('content-type');
+  const body = ct && ct.includes('application/json') ? await response.json() : await response.text();
+  return { ok: response.ok, status: response.status, data: body };
+}
+
+// ============================== Tab 1: 手动提交 ==============================
+function getManualData() {
+  const get = id => document.getElementById(id).value;
+  const orderTime = get('m_order_time');
+  return {
+    pid: get('m_pid'),
+    bus_code: get('m_bus_code'),
+    sku_code: get('m_sku_code'),
+    order_no: get('m_order_no') || ('ORD' + Date.now()),
+    user_phone: get('m_user_phone'),
+    user_nick: get('m_user_nick'),
+    order_time: orderTime ? orderTime.replace('T', ' ') + ':00' : new Date().toISOString().slice(0,19).replace('T',' '),
+    price: parseFloat(get('m_price')) || 0,
+    quantity: parseInt(get('m_quantity')) || 1,
+    total_amount: parseFloat(get('m_total')) || 0,
+    province_code: get('m_province'),
+    city_code: get('m_city'),
+    order_status: get('m_order_status'),
+    type: '1',
+    user_status: '0'
+  };
+}
+
+document.getElementById('btnPost').onclick = async () => {
+  const url = document.getElementById('targetUrl').value.trim();
+  const secret = document.getElementById('appSecret').value.trim();
+  if (!url || !secret) { document.getElementById('singleResponse').innerText = '请填写 API 地址和密钥'; return; }
+  const data = getManualData();
+  document.getElementById('singleLoading').classList.add('show');
+  document.getElementById('singleResponse').innerText = '发送中...';
+  try {
+    const res = await coreRequest('POST', url, data, secret);
+    document.getElementById('singleResponse').innerText = JSON.stringify(res.data, null, 2);
+    document.getElementById('singleResponse').style.color = res.ok ? '#22c55e' : '#ef4444';
+  } catch (e) {
+    document.getElementById('singleResponse').innerText = '异常: ' + e.message;
+    document.getElementById('singleResponse').style.color = '#ef4444';
+  } finally {
+    document.getElementById('singleLoading').classList.remove('show');
+  }
+};
+
+document.getElementById('btnResetManual').onclick = () => {
+  document.getElementById('m_order_no').value = 'ORD' + Date.now();
+  document.getElementById('m_user_phone').value = '138' + Math.floor(Math.random() * 100000000);
+};
+
+// 复制响应内容
+function copyResponse() {
+  const el = document.getElementById('singleResponse');
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    const btn = document.querySelector('[onclick="copyResponse()"]');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ 已复制';
+    setTimeout(() => btn.innerHTML = orig, 1500);
+  }).catch(() => {
+    // fallback
+    const range = document.createRange();
+    range.selectNode(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand('copy');
+    window.getSelection().removeAllRanges();
+  });
+}
+
+// 初始化手动表单时间
+(function() {
+  const now = new Date();
+  const val = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  document.getElementById('m_order_time').value = val;
+  document.getElementById('m_order_no').value = 'ORD' + Date.now();
+})();
+
+// ============================== Tab 2: Excel导入 ==============================
+let parsedExcelRows = [];
+let columnMapping = {};
+let isExcelPushRunning = false;
+let stopExcelFlag = false;
+
+// 上传区域
+const uploadZone = document.getElementById('uploadZone');
+const excelFileInput = document.getElementById('excelFile');
+uploadZone.addEventListener('click', () => excelFileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = 'var(--primary)'; });
+uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.style.borderColor = '';
+  if (e.dataTransfer.files.length) {
+    excelFileInput.files = e.dataTransfer.files;
+    uploadZone.classList.add('has-file');
+    uploadZone.querySelector('.upload-text').textContent = '已选择: ' + e.dataTransfer.files[0].name;
+  }
+});
+excelFileInput.addEventListener('change', () => {
+  if (excelFileInput.files.length) {
+    uploadZone.classList.add('has-file');
+    uploadZone.querySelector('.upload-text').textContent = '已选择: ' + excelFileInput.files[0].name;
+  }
+});
+
+const systemFields = ['order_no', 'user_phone', 'user_nick', 'order_time', 'price', 'quantity', 'total_amount', 'pid', 'bus_code', 'sku_code', 'province_code', 'city_code', 'order_status', 'type', 'user_status'];
+const fieldAliasMap = {
+  '订单号': 'order_no', '订单编号': 'order_no', 'order_no': 'order_no',
+  '手机号': 'user_phone', '手机号码': 'user_phone', '会员手机': 'user_phone',
+  '昵称': 'user_nick', '会员昵称': 'user_nick',
+  '订购时间': 'order_time', '下单时间': 'order_time', 'order_time': 'order_time', '时间': 'order_time',
+  '单价': 'price', '价格': 'price', 'price': 'price',
+  '数量': 'quantity', 'quantity': 'quantity',
+  '总额': 'total_amount', '总金额': 'total_amount', 'total_amount': 'total_amount',
+  '渠道id': 'pid', 'pid': 'pid', '渠道ID': 'pid',
+  '业务编码': 'bus_code', 'bus_code': 'bus_code', '业务标识': 'bus_code',
+  '产品编码': 'sku_code', 'sku_code': 'sku_code', '产品标识': 'sku_code',
+  '省份': 'province_code', '省代码': 'province_code', 'province_code': 'province_code',
+  '城市代码': 'city_code', 'city_code': 'city_code', '市代码': 'city_code',
+  '订单状态': 'order_status', 'order_status': 'order_status'
+};
+
+function smartDetectField(name) {
+  const trimmed = name.toString().trim();
+  for (let [key, field] of Object.entries(fieldAliasMap)) {
+    if (trimmed === key) return field;
+    if (key.toLowerCase().replace(/[_\s]/g, '') === trimmed.toLowerCase().replace(/[_\s]/g, '')) return field;
+  }
+  if (systemFields.includes(trimmed.toLowerCase())) return trimmed.toLowerCase();
+  return null;
+}
+
+function addExcelLog(msg, type = 'info') {
+  const container = document.getElementById('excelLogContainer');
+  const div = document.createElement('div');
+  div.className = 'log-line log-' + type;
+  const t = new Date().toLocaleTimeString();
+  div.innerHTML = `<span style="color:#64748b;">[${t}]</span> ${msg}`;
+  container.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  while (container.children.length > 600) container.removeChild(container.firstChild);
+}
+
+document.getElementById('parseExcelBtn').onclick = () => {
+  const file = excelFileInput.files[0];
+  if (!file) { addExcelLog('请先选择 Excel 文件', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (!raw || raw.length < 2) { addExcelLog('表格至少需要一行表头 + 一行数据', 'error'); return; }
+    const hRow = parseInt(document.getElementById('headerRowIndex').value);
+    const headers = raw[hRow].map(h => h ? String(h).trim() : 'col_' + Math.random());
+    const dataRows = raw.slice(hRow + 1).filter(r => r.some(c => c !== undefined && c !== null && c !== ''));
+    if (!dataRows.length) { addExcelLog('数据区为空', 'error'); return; }
+    parsedExcelRows = dataRows.map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
+      return obj;
+    });
+    // 生成映射UI
+    const uniqueHeaders = [...new Set(headers.filter(h => h))];
+    document.getElementById('mappingRowsList').innerHTML = '';
+    columnMapping = {};
+    uniqueHeaders.forEach(col => {
+      const detected = smartDetectField(col);
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'mapping-row';
+      rowDiv.innerHTML = `
+        <span class="excel-col">📎 ${col}</span>
+        <select data-excelcol="${col}" style="flex:1.5;">
+          <option value="">-- 忽略 --</option>
+          ${systemFields.map(f => `<option value="${f}" ${detected === f ? 'selected' : ''}>${f}</option>`).join('')}
+        </select>
+        <input type="text" class="default-val" placeholder="列缺省值(可选)" style="width:140px;" data-defaultcol="${col}">
+      `;
+      document.getElementById('mappingRowsList').appendChild(rowDiv);
+      if (detected) columnMapping[col] = detected;
+    });
+    document.querySelectorAll('#mappingRowsList select').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const col = sel.getAttribute('data-excelcol');
+        if (sel.value) columnMapping[col] = sel.value;
+        else delete columnMapping[col];
+      });
+    });
+    document.getElementById('mappingContainer').style.display = 'block';
+    // 预览
+    previewExcelData(parsedExcelRows.slice(0, 15), headers);
+    document.getElementById('excelPreviewArea').style.display = 'block';
+    document.getElementById('startExcelPushBtn').disabled = false;
+    addExcelLog(`✅ 解析成功: ${parsedExcelRows.length} 行, 列: ${uniqueHeaders.join(', ')}`, 'success');
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+function previewExcelData(rows, headers) {
+  if (!rows.length) { document.getElementById('previewTable').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">无数据</div>'; return; }
+  let html = '<table><thead><tr>' + headers.slice(0, 10).map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+  rows.forEach(r => {
+    html += '<tr>' + headers.slice(0, 10).map(h => `<td>${r[h] !== undefined && r[h] !== null ? String(r[h]).substring(0, 30) : ''}</td>`).join('') + '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('previewTable').innerHTML = html;
+  document.getElementById('previewTotalRows').textContent = `共 ${parsedExcelRows.length} 行`;
+}
+
+function buildOrderFromExcelRow(row) {
+  const g = id => document.getElementById(id).value;
+  const gd = {
+    pid: g('defaultPid'), bus_code: g('defaultBusCode'), sku_code: g('defaultSkuCode'),
+    user_nick: g('defaultUserNick'), province_code: g('defaultProvince'), city_code: g('defaultCity'),
+    order_status: g('defaultOrderStatusGlobal'), type: g('defaultType')
+  };
+  const order = {};
+  for (let [excelCol, sysField] of Object.entries(columnMapping)) {
+    let val = row[excelCol];
+    if (val === undefined || val === null || val === '') {
+      const defInput = document.querySelector(`.default-val[data-defaultcol="${excelCol}"]`);
+      const colDefault = defInput ? defInput.value.trim() : '';
+      if (colDefault !== '') val = colDefault;
+      else val = null;
+    }
+    if (val !== null && val !== undefined && val !== '') order[sysField] = val;
+  }
+  if (!order.pid) order.pid = gd.pid;
+  if (!order.bus_code) order.bus_code = gd.bus_code;
+  if (!order.sku_code) order.sku_code = gd.sku_code;
+  if (!order.user_nick) order.user_nick = gd.user_nick;
+  if (!order.province_code) order.province_code = gd.province_code;
+  if (!order.city_code) order.city_code = gd.city_code;
+  if (!order.order_status) order.order_status = gd.order_status;
+  if (!order.type) order.type = gd.type;
+  if (!order.user_status) order.user_status = '0';
+  if (order.price) order.price = parseFloat(order.price);
+  if (order.quantity) order.quantity = parseInt(order.quantity);
+  if (order.total_amount) order.total_amount = parseFloat(order.total_amount);
+  else if (order.price && order.quantity) order.total_amount = order.price * order.quantity;
+  if (!order.order_no || order.order_no === '') {
+    if (document.getElementById('autoGenOrder').value === '1') order.order_no = 'EXCEL_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    else throw new Error('订单号缺失');
+  }
+  if (!order.user_phone) throw new Error('手机号(user_phone)缺失');
+  if (order.order_time) {
+    let dt = new Date(order.order_time);
+    if (isNaN(dt.getTime())) dt = new Date();
+    order.order_time = dt.toISOString().slice(0, 19).replace('T', ' ');
+  } else order.order_time = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  if (isNaN(order.price)) order.price = 0;
+  if (isNaN(order.quantity)) order.quantity = 1;
+  if (isNaN(order.total_amount)) order.total_amount = order.price * order.quantity;
+  return order;
+}
+
+document.getElementById('startExcelPushBtn').onclick = async () => {
+  if (isExcelPushRunning) { addExcelLog('已有推送任务运行中', 'warning'); return; }
+  if (!parsedExcelRows || !parsedExcelRows.length) { addExcelLog('无数据，请先解析 Excel', 'error'); return; }
+  const api = document.getElementById('targetUrl').value.trim();
+  const secret = document.getElementById('appSecret').value.trim();
+  if (!api || !secret) { addExcelLog('请填写 API 地址和密钥', 'error'); return; }
+  const delay = parseInt(document.getElementById('excelDelay').value) || 150;
+  isExcelPushRunning = true;
+  stopExcelFlag = false;
+  document.getElementById('startExcelPushBtn').disabled = true;
+  document.getElementById('stopExcelPushBtn').disabled = false;
+  const progressBar = document.getElementById('excelProgressBar');
+  const progressFill = document.getElementById('excelProgressFill');
+  progressBar.style.display = 'block';
+  let success = 0, fail = 0, total = parsedExcelRows.length;
+  for (let i = 0; i < total; i++) {
+    if (stopExcelFlag) { addExcelLog('⏸️ 用户中止推送', 'warning'); break; }
+    const row = parsedExcelRows[i];
+    try {
+      const orderData = buildOrderFromExcelRow(row);
+      const result = await coreRequest('POST', api, orderData, secret);
+      if (result.ok) { success++; addExcelLog(`✅ [${i+1}/${total}] ${orderData.order_no} 推送成功`, 'success'); }
+      else { fail++; addExcelLog(`❌ [${i+1}/${total}] ${orderData.order_no || '未知'} 失败 ${result.status}`, 'error'); }
+    } catch (err) {
+      fail++;
+      addExcelLog(`💥 [${i+1}/${total}] 异常: ${err.message}`, 'error');
+    }
+    progressFill.style.width = ((i + 1) / total * 100) + '%';
+    if (i < total - 1 && delay > 0) await new Promise(r => setTimeout(r, delay));
+  }
+  isExcelPushRunning = false;
+  document.getElementById('startExcelPushBtn').disabled = false;
+  document.getElementById('stopExcelPushBtn').disabled = true;
+  addExcelLog(`🏁 批量结束: 成功 ${success} / 失败 ${fail}`, success === total ? 'success' : 'warning');
+};
+
+document.getElementById('stopExcelPushBtn').onclick = () => { if (isExcelPushRunning) { stopExcelFlag = true; addExcelLog('正在停止...', 'warning'); } };
+document.getElementById('clearExcelLogBtn').onclick = () => { document.getElementById('excelLogContainer').innerHTML = '<div class="log-line">📋 日志已清空</div>'; };
+
+// ============================== Tab 3: 数据监控 ==============================
+function getQueryParams(page) {
+  const p = new URLSearchParams();
+  p.set('page', page || 1);
+  ['f_pid', 'f_order_no', 'f_bus_code', 'f_sku_code', 'f_order_status', 'f_date_start'].forEach(id => {
+    const val = document.getElementById(id).value;
+    if (val) p.set(id.replace('f_', ''), val);
+  });
+  p.set('per_page', '15');
+  return p;
+}
+
+// 根据目标URL判断环境
+function getEnvSuffix() {
+  const url = document.getElementById('targetUrl').value;
+  return url.includes('third-channel-test') ? 'test' : 'prod';
+}
+
+async function fetchOrders(page) {
+  currentPage = page || 1;
+  const params = getQueryParams(currentPage);
+  const isTest = getEnvSuffix() === 'test';
+  const apiUrl = document.getElementById('targetUrl').value.replace(/\/third-channel(-test)?$/, '') + (isTest ? '/product-order-test' : '/product-orders');
+  try {
+    const res = await fetch(apiUrl + '?' + params.toString());
+    const json = await res.json();
+    const data = json.data || { data: [], current_page: 1, last_page: 1, total: 0 };
+    renderOrders(data.data || []);
+    updatePagination(data.current_page || 1, data.last_page || 1, data.total || 0);
+  } catch (e) {
+    document.getElementById('orderTableBody').innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:40px;">加载失败: ${e.message}</td></tr>`;
+  }
+}
+
+function renderOrders(orders) {
+  const tbody = document.getElementById('orderTableBody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => {
+    const st = statusMap[o.order_status] || statusMap[0];
+    const syncHtml = o.sync_status == 1 ? '<span class="sync-ok">✅成功</span>' : '<span class="sync-pending">⏳待处理</span>';
+    return `<tr>
+      <td>${o.id}</td>
+      <td><strong>${o.order_no}</strong></td>
+      <td>${o.pid}</td>
+      <td>${o.bus_code}<br><small style="color:var(--text-muted);">${o.sku_code}</small></td>
+      <td>${o.user_phone}</td>
+      <td>￥${o.price} / ￥${o.total_amount}</td>
+      <td><span class="status-badge ${st.cls}" onclick="showTrace('${o.order_no}', ${o.id})">${st.text}</span></td>
+      <td>${syncHtml}</td>
+      <td style="font-size:12px;color:var(--text-muted);">${o.created_at || ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updatePagination(current, last, total) {
+  document.getElementById('pageInfo').textContent = `第 ${current} / ${last} 页 (共 ${total} 条)`;
+  document.getElementById('prevPage').disabled = current <= 1;
+  document.getElementById('nextPage').disabled = current >= last;
+}
+
+function changePage(offset) { fetchOrders(currentPage + offset); }
+
+function resetFilters() {
+  ['f_pid', 'f_order_no', 'f_bus_code', 'f_sku_code', 'f_date_start'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_order_status').value = '';
+  fetchOrders(1);
+}
+
+// 状态轨迹弹窗
+async function showTrace(orderNo, orderId) {
+  const modal = document.getElementById('traceModal');
+  const traceList = document.getElementById('traceList');
+  document.getElementById('modalTitle').textContent = '订单轨迹: ' + orderNo;
+  traceList.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">加载中...</div>';
+  modal.classList.add('show');
+  const isTest = getEnvSuffix() === 'test';
+  const baseUrl = document.getElementById('targetUrl').value.replace(/\/third-channel(-test)?$/, '');
+  const apiUrl = baseUrl + (isTest ? '/third-channel-order-status-test/' : '/third-channel-order-status/') + orderId;
+  try {
+    const res = await fetch(apiUrl);
+    const json = await res.json();
+    const traces = (json.data && json.data.data) || [];
+    if (!traces.length) {
+      traceList.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">暂无变更痕迹</div>';
+      return;
+    }
+    traceList.innerHTML = traces.map(t => {
+      const st = statusMap[t.new_status] || statusMap[0];
+      return `<div class="trace-item">
+        <span class="trace-status">${st.text}</span>
+        <span class="trace-time">${t.created_at}</span>
+        <div class="trace-detail">变更原因: ${t.remark || '系统自动处理'} &nbsp;|&nbsp; 操作员: ${t.operator || 'System'}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    traceList.innerHTML = '<div style="text-align:center;color:var(--danger);padding:20px;">加载失败: ' + e.message + '</div>';
+  }
+}
+
+function closeTraceModal() { document.getElementById('traceModal').classList.remove('show'); }
+document.getElementById('traceModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeTraceModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTraceModal(); });
+
+// 切换目标服务器时自动刷新监控数据
+document.getElementById('targetUrl').addEventListener('change', () => {
+  const monitorTab = document.getElementById('tab-monitor');
+  if (monitorTab.classList.contains('active')) {
+    // 重置分页并刷新
+    currentPage = 1;
+    fetchOrders(1);
+  }
+});
+
+// 自动加载监控数据（首次访问时）
+setTimeout(() => {
+  if (document.getElementById('tab-monitor').classList.contains('active')) fetchOrders(1);
+}, 500);
+
+// ============================== 登录/退出 ==============================
+let authToken = '';
+
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  if (!phone || !password) { alert('请输入手机号和密码'); return; }
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.innerHTML = '登录中...';
+  try {
+    const baseUrl = document.getElementById('targetUrl').value.replace(/\/v2\/third-channel(-test)?$/, '');
+    const res = await fetch(baseUrl + '/v1/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ phone, password })
+    });
+    const json = await res.json();
+    if ((json.code === 0 || json.code === 200) && json.data && json.data.token) {
+      authToken = json.data.token;
+      document.getElementById('loginStatus').innerHTML = '<span style="color:#22c55e;">✅ 已登录</span>';
+      document.getElementById('btnLogin').style.display = 'none';
+      document.getElementById('btnLogout').style.display = '';
+      document.getElementById('loginPhone').disabled = true;
+      document.getElementById('loginPassword').disabled = true;
+    } else {
+      alert('登录失败: ' + (json.message || '账号或密码错误'));
+    }
+  } catch (e) {
+    alert('登录异常: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🔑 登录';
+  }
+}
+
+function doLogout() {
+  authToken = '';
+  document.getElementById('loginStatus').innerHTML = '未登录';
+  document.getElementById('btnLogin').style.display = '';
+  document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('loginPhone').disabled = false;
+  document.getElementById('loginPassword').disabled = false;
+}
+
+// 带认证的通用请求
+async function authRequest(method, url, body) {
+  if (!authToken) { alert('请先登录'); throw new Error('未登录'); }
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Authorization': 'Bearer ' + authToken
+  };
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  const response = await fetch(url, opts);
+  const ct = response.headers.get('content-type');
+  return ct && ct.includes('application/json') ? await response.json() : await response.text();
+}
+
+// ============================== Tab 4: 推送测试 ==============================
+let pushCurrentPage = 1;
+
+function getBaseApiUrl() {
+  const url = document.getElementById('targetUrl').value;
+  return url.replace(/\/v2\/third-channel(-test)?$/, '');
+}
+
+async function fetchPushOrders(page) {
+  if (!authToken) { document.getElementById('pushTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:40px;">请先登录</td></tr>'; return; }
+  pushCurrentPage = page || 1;
+  const baseUrl = getBaseApiUrl();
+  const params = new URLSearchParams();
+  params.set('page', pushCurrentPage);
+  params.set('per_page', '15');
+  const pid = document.getElementById('push_f_pid').value;
+  if (pid) params.set('pid', pid);
+  const orderNo = document.getElementById('push_f_order_no').value;
+  if (orderNo) params.set('order_no', orderNo);
+  const status = document.getElementById('push_f_status').value;
+  if (status !== '') params.set('sync_status', status);
+  try {
+    const json = await authRequest('GET', baseUrl + '/v1/quanyu-orders?' + params.toString());
+    const paginator = json.data && json.data.data ? json.data : (json.data || { data: [], current_page: 1, last_page: 1, total: 0 });
+    const list = paginator.data || [];
+    renderPushOrders(list);
+    document.getElementById('pushPageInfo').textContent = `第 ${paginator.current_page || 1} / ${paginator.last_page || 1} 页 (共 ${paginator.total || 0} 条)`;
+    document.getElementById('pushPrevPage').disabled = (paginator.current_page || 1) <= 1;
+    document.getElementById('pushNextPage').disabled = (paginator.current_page || 1) >= (paginator.last_page || 1);
+  } catch (e) {
+    document.getElementById('pushTableBody').innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:40px;">加载失败: ${e.message}</td></tr>`;
+  }
+}
+
+function renderPushOrders(orders) {
+  const syncMap = { 0: '⏳待处理', 1: '✅成功', 2: '❌失败', 3: '🚫已取消' };
+  const syncCls = { 0: 'sync-pending', 1: 'sync-ok', 2: 'sync-pending', 3: 'sync-pending' };
+  const tbody = document.getElementById('pushTableBody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => {
+    const st = syncMap[o.sync_status] || '未知';
+    return `<tr>
+      <td><input type="checkbox" class="push-checkbox" value="${o.id}"></td>
+      <td>${o.id}</td>
+      <td><strong>${o.order_no}</strong></td>
+      <td>${o.pid}</td>
+      <td>${o.bus_code || '-'}<br><small style="color:var(--text-muted);">${o.sku_code || '-'}</small></td>
+      <td>￥${o.total_amount || 0}</td>
+      <td><span class="${syncCls[o.sync_status] || ''}">${st}</span></td>
+      <td style="font-size:12px;color:var(--text-muted);">${o.created_at || ''}</td>
+      <td>
+        <button class="btn btn-success btn-sm" onclick="retryPush(${o.id})" ${o.sync_status === 1 ? 'disabled' : ''}>⟳ 重试</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function changePushPage(offset) { fetchPushOrders(pushCurrentPage + offset); }
+
+function togglePushAll() {
+  const checked = document.getElementById('pushSelectAll').checked;
+  document.querySelectorAll('.push-checkbox').forEach(cb => cb.checked = checked);
+}
+
+function getSelectedPushIds() {
+  return Array.from(document.querySelectorAll('.push-checkbox:checked')).map(cb => parseInt(cb.value));
+}
+
+async function retryPush(id) {
+  const baseUrl = getBaseApiUrl();
+  try {
+    const json = await authRequest('POST', baseUrl + '/v1/quanyu-orders/' + id + '/retry');
+    if (json.code === 0 || json.code === 200 || json.code === undefined) {
+      fetchPushOrders(pushCurrentPage);
+    } else {
+      alert('重试失败: ' + (json.message || json.msg || '未知错误'));
+    }
+  } catch (e) { alert('重试异常: ' + e.message); }
+}
+
+async function batchRetryPush() {
+  const ids = getSelectedPushIds();
+  if (!ids.length) { alert('请先选择要重试的订单'); return; }
+  const baseUrl = getBaseApiUrl();
+  try {
+    const json = await authRequest('POST', baseUrl + '/v1/quanyu-orders/batch-retry', { ids });
+    alert(json.message || '批量重试已提交');
+    fetchPushOrders(pushCurrentPage);
+  } catch (e) { alert('批量重试异常: ' + e.message); }
+}
+
+// ============================== Tab 5: 转发测试 ==============================
+let fwdCurrentPage = 1;
+
+const fwdStatusMap = {
+  0: { text: '⏳待处理', cls: 'sync-pending' },
+  1: { text: '✅成功', cls: 'sync-ok' },
+  2: { text: '❌失败', cls: 'sync-pending' },
+  4: { text: '✉️待验证', cls: 'sync-pending' }
+};
+
+async function fetchForwardOrders(page) {
+  if (!authToken) { document.getElementById('forwardTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:40px;">请先登录</td></tr>'; return; }
+  fwdCurrentPage = page || 1;
+  const baseUrl = getBaseApiUrl();
+  const params = new URLSearchParams();
+  params.set('page', fwdCurrentPage);
+  params.set('per_page', '15');
+  const sourcePid = document.getElementById('fwd_f_source_pid').value;
+  if (sourcePid) params.set('source_pid', sourcePid);
+  const orderNo = document.getElementById('fwd_f_order_no').value;
+  if (orderNo) params.set('source_order_no', orderNo);
+  const mobile = document.getElementById('fwd_f_mobile').value;
+  if (mobile) params.set('mobile', mobile);
+  const status = document.getElementById('fwd_f_status').value;
+  if (status !== '') params.set('forward_status', status);
+  try {
+    const json = await authRequest('GET', baseUrl + '/v1/forward-orders?' + params.toString());
+    const data = json.data || { data: [], current_page: 1, last_page: 1, total: 0 };
+    const list = data.data || [];
+    renderForwardOrders(list);
+    document.getElementById('fwdPageInfo').textContent = `第 ${data.current_page || 1} / ${data.last_page || 1} 页 (共 ${data.total || 0} 条)`;
+    document.getElementById('fwdPrevPage').disabled = (data.current_page || 1) <= 1;
+    document.getElementById('fwdNextPage').disabled = (data.current_page || 1) >= (data.last_page || 1);
+  } catch (e) {
+    document.getElementById('forwardTableBody').innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:40px;">加载失败: ${e.message}</td></tr>`;
+  }
+}
+
+function renderForwardOrders(orders) {
+  const tbody = document.getElementById('forwardTableBody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => {
+    const st = fwdStatusMap[o.forward_status] || { text: '未知', cls: '' };
+    const stepName = o.current_step === 0 ? '验证码' : o.current_step === 1 ? '提交' : '-';
+    return `<tr>
+      <td><input type="checkbox" class="fwd-checkbox" value="${o.id}"></td>
+      <td>${o.id}</td>
+      <td><strong>${o.source_order_no}</strong></td>
+      <td>${o.mobile || '-'}</td>
+      <td>${o.source_pid}</td>
+      <td>${o.target_pid}</td>
+      <td><span class="${st.cls}">${st.text}</span></td>
+      <td style="font-size:12px;color:var(--text-muted);">${stepName}</td>
+      <td style="font-size:12px;color:var(--danger);max-width:200px;overflow:hidden;text-overflow:ellipsis;">${o.forward_error || '-'}</td>
+      <td style="font-size:12px;color:var(--text-muted);">${o.created_at || ''}</td>
+      <td>
+        <button class="btn btn-success btn-sm" onclick="retryForward(${o.id})" ${o.forward_status === 1 ? 'disabled' : ''}>⟳ 重试</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function changeFwdPage(offset) { fetchForwardOrders(fwdCurrentPage + offset); }
+
+function toggleFwdAll() {
+  const checked = document.getElementById('fwdSelectAll').checked;
+  document.querySelectorAll('.fwd-checkbox').forEach(cb => cb.checked = checked);
+}
+
+function getSelectedFwdIds() {
+  return Array.from(document.querySelectorAll('.fwd-checkbox:checked')).map(cb => parseInt(cb.value));
+}
+
+async function retryForward(id) {
+  const baseUrl = getBaseApiUrl();
+  try {
+    const json = await authRequest('POST', baseUrl + '/v1/forward-orders/' + id + '/retry');
+    if (json.code === 0 || json.code === 200 || json.code === undefined) {
+      fetchForwardOrders(fwdCurrentPage);
+    } else {
+      alert('重试失败: ' + (json.message || '未知错误'));
+    }
+  } catch (e) { alert('重试异常: ' + e.message); }
+}
+
+async function batchRetryForward() {
+  const ids = getSelectedFwdIds();
+  if (!ids.length) { alert('请先选择要重试的中转记录'); return; }
+  const baseUrl = getBaseApiUrl();
+  try {
+    const json = await authRequest('POST', baseUrl + '/v1/forward-orders/batch-retry', { ids });
+    alert(json.message || '批量重试已提交');
+    fetchForwardOrders(fwdCurrentPage);
+  } catch (e) { alert('批量重试异常: ' + e.message); }
+}
+
+// ============================== Tab 6: 验证码转发 ==============================
+let verifyCurrentPage = 1;
+
+/**
+ * 阶段1：发送验证码
+ * 向 A 公司提交订单，自动触发 C→B 的 getCode 步骤
+ */
+async function sendVerifyCode() {
+  const url = document.getElementById('targetUrl').value.trim();
+  const secret = document.getElementById('appSecret').value.trim();
+  const mobile = document.getElementById('v_mobile').value.trim();
+  const pid = document.getElementById('v_pid').value.trim();
+  if (!mobile) { alert('请输入手机号'); return; }
+  if (!pid) { alert('请输入渠道 PID'); return; }
+  if (!url || !secret) { alert('请填写 API 地址和密钥'); return; }
+
+  const btn = document.getElementById('btnSendCode');
+  btn.disabled = true; btn.innerHTML = '⏳ 发送中...';
+  document.getElementById('sendCodeResponse').innerText = '发送中...';
+
+  // 构造订单数据（模拟 A 公司下单）
+  const data = {
+    pid: pid,
+    bus_code: '001',
+    sku_code: '002',
+    order_no: 'VCODE_' + Date.now(),
+    user_phone: mobile,
+    user_nick: '验证码测试',
+    order_time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    price: 0.01,
+    quantity: 1,
+    total_amount: 0.01,
+    province_code: '44',
+    city_code: '4401',
+    order_status: '1',
+    type: '1',
+    user_status: '0'
+  };
+
+  try {
+    const res = await coreRequest('POST', url, data, secret);
+    const respEl = document.getElementById('sendCodeResponse');
+    respEl.innerText = JSON.stringify(res.data, null, 2);
+    respEl.style.color = res.ok ? '#22c55e' : '#ef4444';
+
+    if (res.ok) {
+      // 自动填入 linkId（如果响应中包含）
+      const linkId = res.data?.data?.linkId || res.data?.linkId || null;
+      if (linkId) {
+        document.getElementById('v_linkId').value = linkId;
+      }
+      // 自动填入手机号到提交区
+      document.getElementById('v_submit_mobile').value = mobile;
+      // 自动查询转发记录
+      document.getElementById('v_query_mobile').value = mobile;
+      setTimeout(() => queryVerifyForwardOrders(), 500);
+    }
+  } catch (e) {
+    document.getElementById('sendCodeResponse').innerText = '异常: ' + e.message;
+    document.getElementById('sendCodeResponse').style.color = '#ef4444';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '📤 发送验证码';
+  }
+}
+
+/**
+ * 阶段2：提交验证码
+ * 调用 verify-submit 接口，触发 submit 步骤
+ */
+async function submitVerifyCode() {
+  if (!authToken) { alert('请先登录'); return; }
+  const baseUrl = getBaseApiUrl();
+  const mobile = document.getElementById('v_submit_mobile').value.trim();
+  const linkId = document.getElementById('v_linkId').value.trim();
+  const smsCode = document.getElementById('v_smsCode').value.trim();
+
+  if (!mobile) { alert('请输入手机号'); return; }
+  if (!linkId) { alert('请输入验证码 ID (linkId)'); return; }
+  if (!smsCode) { alert('请输入验证码 (smsCode)'); return; }
+
+  const btn = document.getElementById('btnSubmitCode');
+  btn.disabled = true; btn.innerHTML = '⏳ 提交中...';
+  document.getElementById('submitCodeResponse').innerText = '提交中...';
+
+  const isTest = getEnvSuffix() === 'test';
+  const apiUrl = baseUrl + '/v2/third-channel' + (isTest ? '-test' : '') + '/verify-submit';
+
+  try {
+    const json = await authRequest('POST', apiUrl, { mobile, linkId, smsCode });
+    const respEl = document.getElementById('submitCodeResponse');
+    respEl.innerText = JSON.stringify(json, null, 2);
+    respEl.style.color = (json.code === 0 || json.code === 200) ? '#22c55e' : '#ef4444';
+
+    // 刷新转发记录
+    if (json.code === 0 || json.code === 200) {
+      setTimeout(() => queryVerifyForwardOrders(), 500);
+    }
+  } catch (e) {
+    document.getElementById('submitCodeResponse').innerText = '异常: ' + e.message;
+    document.getElementById('submitCodeResponse').style.color = '#ef4444';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '✉️ 提交验证码';
+  }
+}
+
+/**
+ * 查询转发记录（按手机号）
+ */
+async function queryVerifyForwardOrders(page) {
+  if (!authToken) { alert('请先登录'); return; }
+  verifyCurrentPage = page || 1;
+  const baseUrl = getBaseApiUrl();
+  const mobile = document.getElementById('v_query_mobile').value.trim();
+  if (!mobile) { alert('请输入手机号'); return; }
+
+  const params = new URLSearchParams();
+  params.set('page', verifyCurrentPage);
+  params.set('per_page', '15');
+  params.set('mobile', mobile);
+
+  try {
+    const json = await authRequest('GET', baseUrl + '/v1/forward-orders?' + params.toString());
+    const data = json.data || { data: [], current_page: 1, last_page: 1, total: 0 };
+    const list = data.data || [];
+    renderVerifyOrders(list);
+    document.getElementById('verifyPageInfo').textContent = `第 ${data.current_page || 1} / ${data.last_page || 1} 页 (共 ${data.total || 0} 条)`;
+    document.getElementById('verifyPrevPage').disabled = (data.current_page || 1) <= 1;
+    document.getElementById('verifyNextPage').disabled = (data.current_page || 1) >= (data.last_page || 1);
+    document.getElementById('verifyPagination').style.display = 'block';
+  } catch (e) {
+    document.getElementById('verifyTableBody').innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--danger);padding:40px;">加载失败: ${e.message}</td></tr>`;
+  }
+}
+
+function renderVerifyOrders(orders) {
+  const vStatusMap = {
+    0: { text: '⏳待处理', cls: 'sync-pending' },
+    1: { text: '✅成功', cls: 'sync-ok' },
+    2: { text: '❌失败', cls: 'sync-pending' },
+    4: { text: '✉️待验证', cls: 'sync-pending' }
+  };
+  const tbody = document.getElementById('verifyTableBody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => {
+    const st = vStatusMap[o.forward_status] || { text: '未知', cls: '' };
+    const stepName = o.current_step === 0 ? '验证码' : o.current_step === 1 ? '提交' : o.current_step > 1 ? '完成' : '-';
+    return `<tr>
+      <td>${o.id}</td>
+      <td><strong>${o.source_order_no}</strong></td>
+      <td>${o.mobile || '-'}</td>
+      <td>${o.source_pid}</td>
+      <td>${o.target_pid}</td>
+      <td><span class="${st.cls}">${st.text}</span></td>
+      <td style="font-size:12px;color:var(--text-muted);">${stepName}</td>
+      <td style="font-size:12px;color:var(--danger);max-width:200px;overflow:hidden;text-overflow:ellipsis;">${o.forward_error || '-'}</td>
+      <td style="font-size:12px;color:var(--text-muted);">${o.created_at || ''}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="showStepDetail(${o.id})" title="查看步骤详情">📋 详情</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function changeVerifyPage(offset) { queryVerifyForwardOrders(verifyCurrentPage + offset); }
+
+/**
+ * 显示步骤详情
+ */
+async function showStepDetail(id) {
+  const modal = document.getElementById('stepDetailModal');
+  const list = document.getElementById('stepDetailList');
+  document.getElementById('stepModalTitle').textContent = '步骤详情 #' + id;
+  list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">加载中...</div>';
+  modal.classList.add('show');
+
+  const baseUrl = getBaseApiUrl();
+  try {
+    const json = await authRequest('GET', baseUrl + '/v1/forward-orders/' + id);
+    const order = json.data || {};
+    const stepResponses = order.step_responses || [];
+    const stepData = order.step_data || {};
+
+    let html = '';
+
+    // 基本信息
+    html += `<div style="background:#f0fdf4;border-radius:8px;padding:12px;margin-bottom:16px;">
+      <div style="font-weight:700;margin-bottom:8px;">📋 基本信息</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+        <div><strong>源订单号：</strong>${order.source_order_no || '-'}</div>
+        <div><strong>手机号：</strong>${order.mobile || '-'}</div>
+        <div><strong>源 PID：</strong>${order.source_pid || '-'}</div>
+        <div><strong>目标 PID：</strong>${order.target_pid || '-'}</div>
+        <div><strong>状态：</strong>${order.forward_status === 4 ? '✉️待验证' : order.forward_status === 1 ? '✅成功' : order.forward_status === 2 ? '❌失败' : '⏳待处理'}</div>
+        <div><strong>当前步骤：</strong>${order.current_step || 0}</div>
+      </div>
+    </div>`;
+
+    // 步骤数据
+    if (Object.keys(stepData).length > 0) {
+      html += `<div style="background:#fffbeb;border-radius:8px;padding:12px;margin-bottom:16px;">
+        <div style="font-weight:700;margin-bottom:8px;">🔗 步骤间传递数据 (step_data)</div>
+        <pre style="font-size:12px;background:#fff;padding:10px;border-radius:6px;border:1px solid #fde68a;overflow-x:auto;">${JSON.stringify(stepData, null, 2)}</pre>
+      </div>`;
+    }
+
+    // 步骤响应
+    if (stepResponses.length > 0) {
+      html += `<div style="font-weight:700;margin-bottom:8px;">📝 步骤响应记录 (${stepResponses.length} 步)</div>`;
+      stepResponses.forEach((sr, idx) => {
+        const isSuccess = !sr.response?.code || sr.response?.code === 0 || sr.response?.code === 200;
+        html += `<div style="background:${isSuccess ? '#f0fdf4' : '#fef2f2'};border-radius:8px;padding:12px;margin-bottom:12px;border-left:4px solid ${isSuccess ? '#22c55e' : '#ef4444'};">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px;">
+            步骤 ${idx + 1}: ${sr.step_name || 'step_' + sr.step_index}
+            <span style="float:right;font-size:12px;color:var(--text-muted);">${sr.time || ''}</span>
+          </div>
+          <details>
+            <summary style="cursor:pointer;font-size:12px;color:var(--primary);">查看请求/响应</summary>
+            <div style="margin-top:8px;">
+              <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">📤 请求：</div>
+              <pre style="font-size:11px;background:#1e293b;color:#94a3b8;padding:8px;border-radius:6px;overflow-x:auto;max-height:150px;">${JSON.stringify(sr.request || {}, null, 2)}</pre>
+              <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin:8px 0 4px;">📥 响应：</div>
+              <pre style="font-size:11px;background:#1e293b;color:#94a3b8;padding:8px;border-radius:6px;overflow-x:auto;max-height:200px;">${JSON.stringify(sr.response || {}, null, 2)}</pre>
+            </div>
+          </details>
+        </div>`;
+      });
+    } else {
+      html += '<div style="text-align:center;color:var(--text-muted);padding:20px;">暂无步骤响应记录</div>';
+    }
+
+    list.innerHTML = html;
+  } catch (e) {
+    list.innerHTML = '<div style="text-align:center;color:var(--danger);padding:20px;">加载失败: ' + e.message + '</div>';
+  }
+}
+
+function closeStepModal() { document.getElementById('stepDetailModal').classList.remove('show'); }
+document.getElementById('stepDetailModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeStepModal(); });
+
+// 切换标签页时自动加载数据
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  const origHandler = btn._listeners ? null : null;
+  btn.addEventListener('click', () => {
+    setTimeout(() => {
+      const tab = btn.dataset.tab;
+      if (tab === 'tab-push' && authToken) fetchPushOrders(1);
+      if (tab === 'tab-forward' && authToken) fetchForwardOrders(1);
+      if (tab === 'tab-verify' && authToken) {
+        const mobile = document.getElementById('v_query_mobile').value.trim();
+        if (mobile) queryVerifyForwardOrders(1);
+      }
+    }, 100);
+  });
+});
+</script>
+</body>
+</html>
+</｜DSML｜tool_calls

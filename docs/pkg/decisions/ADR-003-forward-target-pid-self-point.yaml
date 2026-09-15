@@ -1,0 +1,22 @@
+id: "ADR-003"
+title: "forward_target_pid 自指向是合法模式，非配置错误"
+status: "accepted"
+date: "2026-09"
+deciders: ["technical-director"]
+reference: "doc/需求与设计/order-channel-refactor/modification-v4/修改方案-v4-废弃quanyu统一forward.html"
+
+context:
+  - "目标渠道解析存在 `ext_config.target_pid`（legacy）与 `forward_target_pid`（新）两套。"
+  - "实测 CDLD / HBGY 的 method 均为『转发』，forward_target_pid 自指向（== 自身 pid），真实外部目标位于 push_base_url（两者指向同一上游 http://47.108.207.134:8080）。"
+  - "此前曾误判『HBGY 自指向』为配置错误并尝试修复（T-9 验收 3），后撤销。"
+
+decision:
+  - "forward_target_pid 自指向是合法模式：表示使用本渠道行的 push_base_url + push_steps。"
+  - "目标解析优先级：auto_forward + forward_target_pid（新）> ext_config.target_pid（legacy fallback）。"
+  - "不得把自指向当作错误或过滤掉。"
+
+consequences:
+  - "ChannelConfigLoader.getForwardTargetPid 需支持并放行自指向。"
+  - "删除对『自指向=错误』的一切校验。"
+
+source: ["adr", "business_rule"]

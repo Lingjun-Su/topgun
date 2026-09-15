@@ -1,0 +1,127 @@
+pkg_version: "1.0"
+
+project:
+  id: "topgun"
+  name: "唐贝管理系统"
+  description: "运营商 / 业务 / 渠道订单与合同管理后台：覆盖运营商与业务产品配置、第三方渠道订单接入与推送、数据中转与回调日志、产品订单全链路追踪与报表、组织架构（公司/部门/岗位/员工）以及框架合同与执行合同的审核流转。"
+  status: "active"
+
+  tech_stack:
+    frontend:
+      framework: "Quasar"
+      version: "2"
+      language: "javascript"
+      state: "pinia"
+      charts: "apexcharts"
+
+    backend:
+      framework: "Laravel"
+      version: "12"
+      language: "php"
+      auth: "sanctum"
+
+    database:
+      type: "sqlserver"
+      version: ""
+      name: "topgun"
+
+pkg:
+  root: "./doc/pkg"
+
+  directories:
+    entities: "./doc/pkg/entities"
+    relations: "./doc/pkg/relations"
+    generated: "./doc/pkg/generated"
+    decisions: "./doc/pkg/decisions"
+
+  index:
+    entities: "./doc/pkg/generated/entity-index.yaml"
+    relations: "./doc/pkg/generated/relation-index.yaml"
+    code: "./doc/pkg/generated/code-index.yaml"
+
+knowledge_policy:
+  source_priority:
+    - user_requirement
+    - business_rule
+    - adr
+    - verified_code
+    - database_schema
+    - api_contract
+    - inferred_code
+    - agent_inference
+
+  confidence_levels:
+    - confirmed
+    - probable
+    - inferred
+    - unknown
+
+  unknown_must_not_become_fact: true
+
+relation_policy:
+  bidirectional_traversal: true
+
+  strength_levels:
+    - critical
+    - strong
+    - normal
+    - weak
+    - optional
+
+  impact_analysis:
+    default_max_depth: 3
+    include_reverse_relations: true
+
+ownership:
+  require_owner_for:
+    - business_entity
+    - module
+    - api
+    - database_table
+    - business_rule
+
+change_policy:
+  require_impact_analysis_for:
+    - business_entity
+    - business_rule
+    - api
+    - database_table
+    - database_field
+    - state
+    - permission
+    - public_component
+
+  require_technical_director_approval_for:
+    - public_api
+    - database_schema
+    - business_rule
+    - state_machine
+    - permission_model
+    - shared_component
+
+scanner:
+  enabled: true
+
+  languages:
+    - php
+    - javascript
+    - vue
+
+  frameworks:
+    - laravel
+    - quasar
+
+  database:
+    enabled: true
+    type: sqlserver
+
+  output_mode: candidate
+  never_auto_promote_to_confirmed: true
+
+# 本项目的硬约束（Hard Constraints）—— 与 doc/需求与设计/order-channel-refactor 的 v4 方案一致
+hard_constraints:
+  - "三方角色模型：A(上游供应商) / B(我们中间商) / C(下游推广公司)；third_channels 必须用 role 字段显式归类为 supplier_a / channel_c（role 与 method 正交，禁止用 method 反推 role）。"
+  - "新增 A/C 公司仅通过数据配置完成，不修改代码。"
+  - "多步推送统一走 forward_orders（ForwardOrder + ForwardService）；quanyu_orders 已废弃（写路径断裂，32,561 条孤儿行 sync_status=0）。"
+  - "无独立配对/链接表：路由绑定依赖 forward_target_pid + push_steps + channel_products 归属 + 签名鉴权。"
+  - "执行路径禁止公司字面量特例（pid==='186'、cladmin、xinquanyu、tianxuan、targetMethod==='quanyu'）。"

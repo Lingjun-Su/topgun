@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>验证码转发 · 模拟A公司测试页</title>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background: #f0f4f8;
+  color: #1e293b;
+  padding: 20px;
+  min-height: 100vh;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+
+.header {
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  border-radius: 16px;
+  padding: 24px 32px;
+  margin-bottom: 20px;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header h1 { font-size: 22px; font-weight: 700; }
+.header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.flow-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.flow-node.a { background: #dbeafe; color: #1d4ed8; }
+.flow-node.c { background: #fef3c7; color: #b45309; }
+.flow-node.b { background: #d1fae5; color: #047857; }
+.flow-arrow { color: #94a3b8; font-size: 18px; }
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.config-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; font-weight: 600; color: #64748b; }
+.field input, .field select {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: 0.2s;
+  background: #fff;
+  color: #1e293b;
+}
+.field input:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.field input:read-only { background: #f8fafc; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 22px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-primary { background: #3b82f6; color: #fff; }
+.btn-primary:hover { box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
+.btn-warning { background: #f59e0b; color: #fff; }
+.btn-outline { background: transparent; color: #1e293b; border: 1px solid #e2e8f0; }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-group { display: flex; gap: 8px; align-items: flex-end; }
+
+.sub-step {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-left: 3px solid #cbd5e1;
+}
+.sub-step.a-to-c { border-left-color: #3b82f6; }
+.sub-step.c-to-b { border-left-color: #f59e0b; }
+.sub-step .sub-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #475569; }
+
+.response-box {
+  background: #1e293b;
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.response-box.success { border-left: 3px solid #22c55e; }
+.response-box.error { border-left: 3px solid #ef4444; }
+
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: #e2e8f0;
+}
+.timeline-item {
+  position: relative;
+  padding: 0 0 16px 16px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  border: 2px solid #fff;
+}
+.timeline-item.ok::before { background: #22c55e; }
+.timeline-item.err::before { background: #ef4444; }
+.timeline-item.warn::before { background: #f59e0b; }
+.timeline-item .tl-time { font-size: 11px; color: #94a3b8; }
+.timeline-item .tl-title { font-size: 13px; font-weight: 600; }
+.timeline-item .tl-detail { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+@media (max-width: 768px) {
+  body { padding: 10px; }
+  .header { padding: 18px 20px; }
+  .card { padding: 16px; }
+  .config-grid { grid-template-columns: 1fr 1fr !important; }
+  .flow-diagram { font-size: 11px; }
+  .flow-node { padding: 6px 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>模拟 A 公司 · 验证码转发测试</h1>
+      <p>A 公司 → C 系统（带验证码两步转发）</p>
+    </div>
+    <span style="background:rgba(255,255,255,0.2);padding:4px 14px;border-radius:20px;font-size:12px;">纯 API 签名认证</span>
+  </div>
+
+  <!-- Flow Diagram -->
+  <div class="card" style="padding:16px 20px;">
+    <div class="flow-diagram">
+      <span class="flow-node a">📱 A 公司</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node c">⚙️ C 系统</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node a">📱 A 公司</span>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;font-size:12px;color:#64748b;">
+      <span>① 提交订单 → 同步 getCode（C 系统转发）</span>
+      <span>② 同步返回 linkId</span>
+      <span>③ 提交验证码 → 同步 submit（C 系统转发）</span>
+      <span>④ 异步回调通知 A 公司</span>
+    </div>
+  </div>
+
+  <!-- Configuration -->
+  <div class="card">
+    <div class="card-title">⚙️ 全局配置</div>
+    <div class="config-grid cols-4">
+      <div class="field">
+        <label>C 系统 API 地址</label>
+        <select id="apiUrl">
+          <option value="http://127.0.0.1:8000/api/v2/third-channel-test">本地测试 (127.0.0.1:8000)</option>
+          <option value="http://127.0.0.1:8000/api/v2/third-channel">本地正式 (127.0.0.1:8000)</option>
+          <option value="http://159.75.226.248:8080/api/v2/third-channel-test">服务器测试</option>
+          <option value="http://159.75.226.248:8080/api/v2/third-channel">服务器正式</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>通信密钥 (App Secret)</label>
+        <input type="password" id="appSecret" value="199">
+      </div>
+      <div class="field">
+        <label>渠道 PID</label>
+        <input type="text" id="channelPid" value="199" placeholder="C 系统分配的渠道标识">
+      </div>
+      <div class="field" style="justify-content:flex-end;">
+        <label style="opacity:0;">操作</label>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('appSecret').type=document.getElementById('appSecret').type==='password'?'text':'password'">显示/隐藏密钥</button>
+      </div>
+    </div>
+
+    </div>
+
+  <!-- Step 1: Send Order -->
+  <div class="card">
+    <div class="card-title">📤 步骤一：提交订单 → 触发 getCode 转发</div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:14px;">
+      模拟 A 公司向 C 系统提交订单，C 系统验证签名后，内部处理并转发请求。
+    </p>
+    <div class="config-grid cols-3">
+      <div class="field">
+        <label>手机号（接收验证码）</label>
+        <input type="text" id="step1Mobile" value="13812345678" placeholder="手机号">
+      </div>
+      <div class="field">
+        <label>业务编码 (bus_code)</label>
+        <input type="text" id="step1BusCode" value="001" placeholder="业务标识">
+      </div>
+      <div class="field">
+        <label>产品编码 (sku_code)</label>
+        <input type="text" id="step1SkuCode" value="002" placeholder="产品标识">
+      </div>
+      <div class="field">
+        <label>渠道 PID（签名认证用）</label>
+        <input type="text" id="step1Pid" value="199" placeholder="与全局配置一致">
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btnStep1" onclick="executeStep1()">📤 提交订单</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+      A 公司发送订单 → C 系统验证签名后，根据渠道配置内部转发
+    </div>
+
+    <div id="step1Details" style="display:none;margin-top:14px;">
+      <div class="sub-step a-to-c">
+        <div class="sub-title"><span class="arrow">📤</span> A 公司 → C 系统：提交订单（原始数据）</div>
+        <div class="response-box" id="step1Request">等待请求...</div>
+        <div style="margin-top:8px;font-size:12px;font-weight:600;color:#64748b;">📥 C 系统响应：</div>
+        <div class="response-box" id="step1Response">等待响应...</div>
+      </div>
+      <div class="sub-step c-to-b" id="step1ForwardBox" style="display:none;">
+        <div class="sub-title"><span class="arrow">🔄</span> C 系统：转发 getCode</div>
+        <div class="response-box" id="step1ForwardResponse">等待转发结果...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Submit Verification Code -->
+  <div class="card">
+    <div class="card-title">✉️ 步骤二：提交验证码 → 触发 submit 转发</div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:14px;">
+      获取 linkId 后，填入收到的短信验证码，A 公司调用 C 系统 verify-submit 接口触发 submit 转发。
+    </p>
+    <div class="config-grid cols-4">
+      <div class="field">
+        <label>手机号</label>
+        <input type="text" id="step2Mobile" placeholder="与步骤一一致">
+      </div>
+      <div class="field">
+        <label>验证码 ID (linkId)</label>
+        <input type="text" id="step2LinkId" placeholder="步骤一返回的 linkId">
+      </div>
+      <div class="field">
+        <label>短信验证码 (smsCode)</label>
+        <input type="text" id="step2SmsCode" placeholder="收到的验证码">
+      </div>
+      <div class="field">
+        <label>业务编码 (bus_code)</label>
+        <input type="text" id="step2BusCode" value="001" placeholder="与步骤一一致">
+      </div>
+      <div class="field">
+        <label>产品编码 (sku_code)</label>
+        <input type="text" id="step2SkuCode" value="002" placeholder="与步骤一一致">
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-warning" id="btnStep2" onclick="executeStep2()">✉️ 提交验证码</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+      A 公司提交验证码 → C 系统验证签名后，根据渠道配置内部转发
+    </div>
+
+    <div id="step2Details" style="display:none;margin-top:14px;">
+      <div class="sub-step a-to-c">
+        <div class="sub-title"><span class="arrow">📤</span> A 公司 → C 系统：提交验证码（签名认证）</div>
+        <div class="response-box" id="step2Response">等待响应...</div>
+      </div>
+      <div class="sub-step c-to-b" id="step2ForwardBox" style="display:none;">
+        <div class="sub-title"><span class="arrow">🔄</span> C 系统：转发 submit</div>
+        <div class="response-box" id="step2ForwardResponse">等待转发结果...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual Query -->
+  <div class="card">
+    <div class="card-title">🔍 查询转发记录</div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:14px;">
+      通过签名认证查询指定手机号的转发记录，获取 linkId 和转发状态。
+    </p>
+    <div class="config-grid cols-3">
+      <div class="field">
+        <label>手机号</label>
+        <input type="text" id="queryMobile" placeholder="输入手机号查询">
+      </div>
+      <div class="field">
+        <label>订单号（可选）</label>
+        <input type="text" id="queryOrderNo" placeholder="精确筛选订单号">
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="executeQuery()">🔍 查询</button>
+      </div>
+    </div>
+    <div id="queryResultBox" style="display:none;margin-top:12px;">
+      <div class="response-box" id="queryResult">等待查询结果...</div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="card">
+    <div class="card-title">📜 完整流程时间线</div>
+    <div id="timelineContainer" class="timeline">
+      <div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px;">等待操作开始...</div>
+    </div>
+    <div style="text-align:right;margin-top:8px;">
+      <button class="btn btn-outline btn-sm" onclick="clearTimeline()">🗑️ 清空</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================== Helpers ==============================
+function getBaseUrl() {
+  const url = document.getElementById('apiUrl').value;
+  return url.replace(/\/v2\/third-channel(-test)?$/, '');
+}
+
+function getEnvSuffix() {
+  const url = document.getElementById('apiUrl').value;
+  return url.includes('third-channel-test') ? 'test' : 'prod';
+}
+
+function addTimeline(type, title, detail) {
+  const container = document.getElementById('timelineContainer');
+  const empty = container.querySelector('div[style*="text-align:center"]');
+  if (empty) empty.remove();
+  const t = new Date().toLocaleTimeString();
+  const div = document.createElement('div');
+  div.className = 'timeline-item ' + type;
+  div.innerHTML = '<span class="tl-time">[' + t + ']</span><div class="tl-title">' + title + '</div><div class="tl-detail">' + (detail || '') + '</div>';
+  container.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function clearTimeline() {
+  document.getElementById('timelineContainer').innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px;">时间线已清空</div>';
+}
+
+// ============================== 签名请求（A 公司 → C 系统） ==============================
+// 所有对 C 系统的 API 调用都使用签名认证，无需登录
+// 支持 GET 和 POST 请求，GET 请求使用空字符串计算签名
+async function signedRequest(method, url, data, secret, pid) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  const isGet = method.toUpperCase() === 'GET';
+  // GET 请求无 body，签名时使用空字符串；POST 请求使用 JSON.stringify
+  const bodyContent = isGet ? '' : JSON.stringify(data);
+  const signStr = secret + timestamp + nonce + bodyContent;
+  const signature = CryptoJS.SHA256(signStr).toString();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-PID': pid || '',
+    'X-Signature': signature,
+    'X-Timestamp': timestamp,
+    'X-Nonce': nonce
+  };
+  const fetchOptions = { method, headers };
+  if (!isGet) {
+    fetchOptions.body = bodyContent;
+  }
+  const response = await fetch(url, fetchOptions);
+  const ct = response.headers.get('content-type');
+  const body = ct && ct.includes('application/json') ? await response.json() : await response.text();
+  return { ok: response.ok, status: response.status, data: body };
+}
+
+// ============================== Step 1: 提交订单 → getCode ==============================
+async function executeStep1() {
+  const apiUrl = document.getElementById('apiUrl').value.trim();
+  const secret = document.getElementById('appSecret').value.trim();
+  const mobile = document.getElementById('step1Mobile').value.trim();
+  const busCode = document.getElementById('step1BusCode').value.trim();
+  const skuCode = document.getElementById('step1SkuCode').value.trim();
+  const pid = document.getElementById('step1Pid').value.trim();
+
+  if (!mobile) { alert('请输入手机号'); return; }
+  if (!busCode) { alert('请输入业务编码 (bus_code)'); return; }
+  if (!skuCode) { alert('请输入产品编码 (sku_code)'); return; }
+  if (!pid) { alert('请输入渠道 PID'); return; }
+  if (!apiUrl || !secret) { alert('请配置 API 地址和密钥'); return; }
+
+  const btn = document.getElementById('btnStep1');
+  btn.disabled = true; btn.innerHTML = '⏳ 提交订单...';
+
+  document.getElementById('step1Details').style.display = 'block';
+  document.getElementById('step1Request').innerText = '构建请求中...';
+  document.getElementById('step1Response').innerText = '等待响应...';
+  document.getElementById('step1ForwardBox').style.display = 'none';
+  document.getElementById('step1ForwardResponse').innerText = '等待转发结果...';
+
+  const orderNo = 'VCODE_' + Date.now();
+  const orderData = {
+    pid: pid,
+    bus_code: busCode,
+    sku_code: skuCode,
+    order_no: orderNo,
+    user_phone: mobile,
+    user_nick: '验证码测试',
+    order_time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    price: 0.01,
+    quantity: 1,
+    total_amount: 0.01,
+    province_code: '44',
+    city_code: '4401',
+    order_status: '1',
+    type: '1',
+    user_status: '0'
+  };
+
+  document.getElementById('step1Request').innerText = JSON.stringify(orderData, null, 2);
+  addTimeline('warn', '步骤一：提交订单', 'A 公司 → C 系统（签名认证），同步触发 getCode 转发...');
+
+  try {
+    const res = await signedRequest('POST', apiUrl, orderData, secret, pid);
+    document.getElementById('step1Response').innerText = JSON.stringify(res.data, null, 2);
+    document.getElementById('step1Response').className = 'response-box ' + (res.ok ? 'success' : 'error');
+
+    if (res.ok) {
+      addTimeline('ok', 'C 系统接收订单成功', '订单号: ' + orderNo);
+      forwardOrderId = res.data?.data?.forward_order_id || null;
+
+      document.getElementById('step1ForwardBox').style.display = 'block';
+
+      // 检查是否有 forward 信息（同步转发）
+      const forwardData = res.data?.data;
+      if (forwardData && forwardData.forward_order_id) {
+        // 构建下游系统响应信息
+        let bResponseInfo = '';
+        if (forwardData.b_response) {
+          bResponseInfo = '\n\n📥 下游系统原始响应：\n' + JSON.stringify(forwardData.b_response, null, 2);
+        }
+
+        if (forwardData.linkId) {
+          // 同步 getCode 转发成功
+          document.getElementById('step2LinkId').value = forwardData.linkId;
+          document.getElementById('step2Mobile').value = mobile;
+          document.getElementById('step2BusCode').value = busCode;
+          document.getElementById('step2SkuCode').value = skuCode;
+
+          document.getElementById('step1ForwardResponse').innerText =
+            '✓ 同步 getCode 转发成功！\n' +
+            'ForwardOrder #' + forwardData.forward_order_id + '\n' +
+            'linkId: ' + forwardData.linkId + '\n' +
+            '当前步骤: ' + (forwardData.current_step || 1) + '\n\n' +
+            '✅ linkId 已自动填入步骤二，请填写收到的短信验证码后提交。' +
+            bResponseInfo;
+          document.getElementById('step1ForwardResponse').className = 'response-box success';
+          addTimeline('ok', '下游系统返回 linkId', 'linkId: ' + forwardData.linkId + '（已自动填入步骤二）');
+        } else {
+          // 同步 getCode 转发成功（无 linkId，但下游系统有响应）
+          document.getElementById('step2Mobile').value = mobile;
+
+          document.getElementById('step1ForwardResponse').innerText =
+            '✓ 同步 getCode 转发成功（下游系统已回复）\n\n' +
+            'ForwardOrder #' + forwardData.forward_order_id + '\n' +
+            '当前步骤: ' + (forwardData.current_step || 1) + '\n' +
+            (forwardData.forward_error ? '错误: ' + forwardData.forward_error + '\n' : '') +
+            bResponseInfo;
+          document.getElementById('step1ForwardResponse').className = 'response-box success';
+          addTimeline('ok', '下游系统返回响应', '下游系统已回复，请查看下方响应详情');
+        }
+      } else {
+        // 未触发转发
+        document.getElementById('step1ForwardResponse').innerText =
+          '✓ 订单已提交成功（未触发转发流程）\n' +
+          '订单号: ' + orderNo + '\n\n' +
+          '说明：当前渠道未配置验证码转发流程。';
+        document.getElementById('step1ForwardResponse').className = 'response-box';
+      }
+
+      // 自动填入步骤二的手机号
+      document.getElementById('step2Mobile').value = mobile;
+    } else {
+      addTimeline('err', 'C 系统拒绝订单', JSON.stringify(res.data));
+      document.getElementById('step1ForwardBox').style.display = 'block';
+      document.getElementById('step1ForwardResponse').innerText = '订单提交失败，无法触发转发流程\n\n错误信息：' + JSON.stringify(res.data);
+      document.getElementById('step1ForwardResponse').className = 'response-box error';
+    }
+  } catch (e) {
+    document.getElementById('step1Response').innerText = '异常: ' + e.message;
+    document.getElementById('step1Response').className = 'response-box error';
+    addTimeline('err', '请求异常', e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '📤 提交订单';
+  }
+}
+
+// ============================== Step 2: 提交验证码 → submit ==============================
+async function executeStep2() {
+  const secret = document.getElementById('appSecret').value.trim();
+  const pid = document.getElementById('step1Pid').value.trim() || document.getElementById('channelPid').value.trim();
+  const mobile = document.getElementById('step2Mobile').value.trim();
+  const linkId = document.getElementById('step2LinkId').value.trim();
+  const smsCode = document.getElementById('step2SmsCode').value.trim();
+  const busCode = document.getElementById('step2BusCode').value.trim();
+  const skuCode = document.getElementById('step2SkuCode').value.trim();
+
+  if (!mobile) { alert('请输入手机号'); return; }
+  if (!linkId) { alert('请输入验证码 ID (linkId)'); return; }
+  if (!smsCode) { alert('请输入短信验证码 (smsCode)'); return; }
+  if (!busCode) { alert('请输入业务编码 (bus_code)'); return; }
+  if (!skuCode) { alert('请输入产品编码 (sku_code)'); return; }
+  if (!secret) { alert('请配置通信密钥'); return; }
+
+  const btn = document.getElementById('btnStep2');
+  btn.disabled = true; btn.innerHTML = '⏳ 提交中...';
+
+  document.getElementById('step2Details').style.display = 'block';
+  document.getElementById('step2Response').innerText = '提交中...';
+  document.getElementById('step2ForwardBox').style.display = 'none';
+
+  const isTest = getEnvSuffix() === 'test';
+  const baseUrl = getBaseUrl();
+  const apiUrl = baseUrl + '/v2/third-channel' + (isTest ? '-test' : '') + '/verify-submit';
+
+  const payload = { mobile: mobile, linkId: linkId, smsCode: smsCode, bus_code: busCode, sku_code: skuCode };
+
+  addTimeline('warn', '步骤二：提交验证码', 'A 公司 → C 系统（签名认证），触发 submit 转发...');
+
+  try {
+    // verify-submit 使用相同的签名认证（channel.auth middleware）
+    const res = await signedRequest('POST', apiUrl, payload, secret, pid);
+    document.getElementById('step2Response').innerText = JSON.stringify(res.data, null, 2);
+    document.getElementById('step2Response').className = 'response-box ' + (res.ok ? 'success' : 'error');
+
+    if (res.ok) {
+      const data = res.data?.data || {};
+      const targetOrderNo = data.target_order_no || '-';
+      // 构建下游系统响应信息
+      let bResponseInfo = '';
+      if (data.b_response) {
+        bResponseInfo = '\n\n📥 下游系统原始响应：\n' + JSON.stringify(data.b_response, null, 2);
+      }
+      addTimeline('ok', '验证码提交成功，submit 转发成功', '目标订单号: ' + targetOrderNo);
+      document.getElementById('step2ForwardBox').style.display = 'block';
+      document.getElementById('step2ForwardResponse').innerText =
+        '✓ 同步 submit 转发成功！\n\n' +
+        'ForwardOrder #' + (data.forward_order_id || '-') + '\n' +
+        '源订单号: ' + (data.source_order_no || '-') + '\n' +
+        '目标订单号: ' + targetOrderNo + '\n' +
+        '状态: ' + (data.forward_status === 1 ? '成功' : '待确认') +
+        bResponseInfo;
+      document.getElementById('step2ForwardResponse').className = 'response-box success';
+    } else {
+      addTimeline('err', '验证码提交失败', res.data?.message || '未知错误');
+      document.getElementById('step2ForwardBox').style.display = 'block';
+      document.getElementById('step2ForwardResponse').innerText =
+        '✗ submit 转发失败\n\n' +
+        '错误: ' + (res.data?.message || '未知错误');
+      document.getElementById('step2ForwardResponse').className = 'response-box error';
+    }
+  } catch (e) {
+    document.getElementById('step2Response').innerText = '异常: ' + e.message;
+    document.getElementById('step2Response').className = 'response-box error';
+    addTimeline('err', '请求异常', e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '✉️ 提交验证码';
+  }
+}
+
+// ============================== 查询转发记录 ==============================
+async function executeQuery() {
+  const secret = document.getElementById('appSecret').value.trim();
+  const pid = document.getElementById('channelPid').value.trim();
+  const mobile = document.getElementById('queryMobile').value.trim();
+  const orderNo = document.getElementById('queryOrderNo').value.trim();
+
+  if (!mobile) { alert('请输入手机号'); return; }
+  if (!secret) { alert('请配置通信密钥'); return; }
+
+  document.getElementById('queryResultBox').style.display = 'block';
+  document.getElementById('queryResult').innerText = '查询中...';
+  document.getElementById('queryResult').className = 'response-box';
+
+  try {
+    const isTest = getEnvSuffix() === 'test';
+    const baseUrl = getBaseUrl();
+    const queryUrl = baseUrl + '/v2/third-channel' + (isTest ? '-test' : '') + '/query-forward?mobile=' + encodeURIComponent(mobile) + (orderNo ? '&source_order_no=' + encodeURIComponent(orderNo) : '');
+
+    const res = await signedRequest('GET', queryUrl, {}, secret, pid);
+    const resultEl = document.getElementById('queryResult');
+
+    if (res.ok && res.data?.data) {
+      const orders = Array.isArray(res.data.data) ? res.data.data : [];
+      if (orders.length === 0) {
+        resultEl.innerText = '未找到转发记录（手机号: ' + mobile + '）';
+        resultEl.className = 'response-box';
+        addTimeline('warn', '查询转发记录', '未找到记录（手机号: ' + mobile + '）');
+        return;
+      }
+
+      let output = '找到 ' + orders.length + ' 条转发记录：\n\n';
+      orders.forEach((o, i) => {
+        const statusMap = { 0: '待处理', 1: '成功', 2: '失败', 4: '待验证' };
+        const status = statusMap[o.forward_status] || ('未知(' + o.forward_status + ')');
+        output += '--- 记录 #' + (i + 1) + ' ---\n';
+        output += 'ID: ' + o.id + '\n';
+        output += '订单号: ' + (o.source_order_no || '-') + '\n';
+        output += '手机号: ' + (o.mobile || '-') + '\n';
+        output += '状态: ' + status + '\n';
+        output += '当前步骤: ' + (o.current_step ?? 0) + '\n';
+        output += 'linkId: ' + (o.linkId || '未获取到') + '\n';
+        if (o.target_order_no) output += '目标订单号: ' + o.target_order_no + '\n';
+        if (o.forward_error) output += '错误信息: ' + o.forward_error + '\n';
+        output += '创建时间: ' + (o.created_at || '-') + '\n';
+        output += '\n';
+
+        // 如果找到 linkId 且步骤二未填写，自动填入
+        if (o.linkId && !document.getElementById('step2LinkId').value) {
+          document.getElementById('step2LinkId').value = o.linkId;
+        }
+        if (o.mobile && !document.getElementById('step2Mobile').value) {
+          document.getElementById('step2Mobile').value = o.mobile;
+        }
+      });
+
+      // 自动填入第一个记录的 linkId 到步骤二
+      if (orders[0].linkId && !document.getElementById('step2LinkId').value) {
+        document.getElementById('step2LinkId').value = orders[0].linkId;
+      }
+      if (orders[0].mobile && !document.getElementById('step2Mobile').value) {
+        document.getElementById('step2Mobile').value = orders[0].mobile;
+      }
+
+      resultEl.innerText = output;
+      resultEl.className = 'response-box success';
+      addTimeline('ok', '查询转发记录', '找到 ' + orders.length + ' 条记录');
+    } else {
+      const errMsg = res.data?.message || JSON.stringify(res.data);
+      document.getElementById('queryResult').innerText = '查询失败: ' + errMsg;
+      document.getElementById('queryResult').className = 'response-box error';
+      addTimeline('err', '查询转发记录失败', errMsg);
+    }
+  } catch (e) {
+    document.getElementById('queryResult').innerText = '异常: ' + e.message;
+    document.getElementById('queryResult').className = 'response-box error';
+    addTimeline('err', '查询异常', e.message);
+  }
+}
+</script>
+</body>
+</html>

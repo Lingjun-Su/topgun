@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>验证码转发 · 独立测试页</title>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background: #f0f4f8;
+  color: #1e293b;
+  padding: 20px;
+  min-height: 100vh;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-radius: 16px;
+  padding: 24px 32px;
+  margin-bottom: 20px;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header h1 { font-size: 22px; font-weight: 700; }
+.header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+
+/* Cards */
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Flow diagram */
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.flow-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.flow-node.a { background: #dbeafe; color: #1d4ed8; }
+.flow-node.c { background: #fef3c7; color: #b45309; }
+.flow-node.b { background: #d1fae5; color: #047857; }
+.flow-arrow { color: #94a3b8; font-size: 18px; }
+
+/* Config grid */
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; font-weight: 600; color: #64748b; }
+.field input, .field select {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: 0.2s;
+  background: #fff;
+  color: #1e293b;
+}
+.field input:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+.field input:disabled { background: #f1f5f9; color: #94a3b8; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 22px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-primary { background: #6366f1; color: #fff; }
+.btn-primary:hover { box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+.btn-success { background: #22c55e; color: #fff; }
+.btn-warning { background: #f59e0b; color: #fff; }
+.btn-outline { background: transparent; color: #1e293b; border: 1px solid #e2e8f0; }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+
+/* Step sections */
+.step-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
+  transition: all 0.3s;
+}
+.step-section.active { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+.step-section.completed { border-color: #22c55e; background: #f0fdf4; }
+.step-section.failed { border-color: #ef4444; background: #fef2f2; }
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.step-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.step-badge.pending { background: #cbd5e1; }
+.step-badge.active { background: #6366f1; }
+.step-badge.done { background: #22c55e; }
+.step-badge.fail { background: #ef4444; }
+.step-title { font-size: 14px; font-weight: 700; flex: 1; }
+.step-status {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.step-status.pending { background: #f1f5f9; color: #64748b; }
+.step-status.running { background: #dbeafe; color: #1d4ed8; }
+.step-status.done { background: #d1fae5; color: #047857; }
+.step-status.fail { background: #fef2f2; color: #dc2626; }
+
+/* Sub-step cards */
+.sub-step {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-left: 3px solid #cbd5e1;
+}
+.sub-step.a-to-c { border-left-color: #3b82f6; }
+.sub-step.c-to-b { border-left-color: #f59e0b; }
+.sub-step.b-to-c { border-left-color: #22c55e; }
+.sub-step.c-to-a { border-left-color: #8b5cf6; }
+.sub-step .sub-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.sub-step .sub-title .arrow { margin: 0 4px; }
+
+/* Response box */
+.response-box {
+  background: #1e293b;
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.response-box.success { border-left: 3px solid #22c55e; }
+.response-box.error { border-left: 3px solid #ef4444; }
+
+/* Data table */
+.data-table-wrap { overflow-x: auto; }
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th {
+  background: #f8fafc;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.data-table tr:hover { background: #f8fafc; }
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+.status-badge.ok { background: #22c55e; }
+.status-badge.fail { background: #ef4444; }
+.status-badge.pending { background: #f59e0b; }
+.status-badge.verify { background: #6366f1; }
+
+/* Log */
+.log-area {
+  background: #1e293b;
+  color: #94a3b8;
+  border-radius: 10px;
+  padding: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  max-height: 250px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+.log-line { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.log-ok { color: #4ade80; }
+.log-err { color: #f87171; }
+.log-warn { color: #fbbf24; }
+.log-info { color: #94a3b8; }
+
+/* Action bar */
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: #fff;
+  border-radius: 16px;
+  width: 680px;
+  max-width: 90vw;
+  max-height: 80vh;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  overflow: hidden;
+  animation: modalIn 0.2s ease;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.modal-header h3 { font-size: 16px; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: 0.2s;
+}
+.modal-close:hover { background: #e2e8f0; }
+.modal-body { padding: 20px 24px; max-height: 55vh; overflow-y: auto; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  body { padding: 10px; }
+  .header { padding: 18px 20px; }
+  .card { padding: 16px; }
+  .config-grid { grid-template-columns: 1fr 1fr; }
+  .flow-diagram { font-size: 11px; }
+  .flow-node { padding: 6px 10px; }
+}
+
+/* Timeline */
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: #e2e8f0;
+}
+.timeline-item {
+  position: relative;
+  padding: 0 0 16px 16px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  border: 2px solid #fff;
+}
+.timeline-item.ok::before { background: #22c55e; }
+.timeline-item.err::before { background: #ef4444; }
+.timeline-item.warn::before { background: #f59e0b; }
+.timeline-item .tl-time { font-size: 11px; color: #94a3b8; }
+.timeline-item .tl-title { font-size: 13px; font-weight: 600; }
+.timeline-item .tl-detail { font-size: 12px; color: #64748b; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>📡 验证码转发 · 独立测试页</h1>
+      <p>模拟 A 公司 → C 系统 → B 公司 完整数据中转流程</p>
+    </div>
+    <span style="background:rgba(255,255,255,0.2);padding:4px 14px;border-radius:20px;font-size:12px;">v1.0</span>
+  </div>
+
+  <!-- Flow Diagram -->
+  <div class="card" style="padding:16px 20px;">
+    <div class="flow-diagram">
+      <span class="flow-node a">📱 A 公司</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node c">⚙️ C 系统</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node b">🏢 B 公司</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node c">⚙️ C 系统</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node a">📱 A 公司</span>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;font-size:12px;color:#64748b;">
+      <span>① 提交订单 → 触发 getCode</span>
+      <span>② 返回 linkId</span>
+      <span>③ 提交验证码 → 触发 submit</span>
+      <span>④ 回调通知结果</span>
+    </div>
+  </div>
+
+  <!-- Configuration -->
+  <div class="card">
+    <div class="card-title">⚙️ 全局配置</div>
+    <div class="config-grid">
+      <div class="field">
+        <label>C 系统 API 地址</label>
+        <select id="apiUrl">
+          <option value="http://127.0.0.1:8000/api/v2/third-channel-test">本地测试 (127.0.0.1:8000)</option>
+          <option value="http://127.0.0.1:8000/api/v2/third-channel">本地正式 (127.0.0.1:8000)</option>
+          <option value="http://159.75.226.248:8080/api/v2/third-channel-test">服务器测试</option>
+          <option value="http://159.75.226.248:8080/api/v2/third-channel">服务器正式</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>通信密钥 (App Secret)</label>
+        <input type="password" id="appSecret" value="189">
+      </div>
+      <div class="field">
+        <label>登录手机号</label>
+        <input type="text" id="loginPhone" value="18688414383">
+      </div>
+      <div class="field">
+        <label>登录密码</label>
+        <input type="password" id="loginPassword" value="123456">
+      </div>
+      <div class="field" style="justify-content:flex-end;">
+        <label style="opacity:0;">操作</label>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" id="btnLogin" onclick="doLogin()">🔑 登录</button>
+          <button class="btn btn-outline btn-sm" id="btnLogout" onclick="doLogout()" style="display:none;">退出</button>
+          <span id="loginStatus" style="font-size:12px;color:#94a3b8;display:flex;align-items:center;">未登录</span>
+        </div>
+      </div>
+    </div>
+    <div class="config-grid" style="margin-top:8px;padding-top:12px;border-top:1px solid #e2e8f0;">
+      <div class="field">
+        <label>🔑 B 公司 productId</label>
+        <input type="text" id="bProductId" value="0411cca9" placeholder="产品编号">
+      </div>
+      <div class="field">
+        <label>🔑 B 公司 channelId</label>
+        <input type="text" id="bChannelId" value="9d90446f05" placeholder="推广编号">
+      </div>
+      <div class="field">
+        <label>💰 fee (分)</label>
+        <input type="text" id="bFee" value="2000" placeholder="金额，单位：分">
+      </div>
+      <div class="field">
+        <label>🔑 cpid (渠道号)</label>
+        <input type="text" id="bCpid" value="gxhjy004" placeholder="我方分配的渠道号">
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1: Send Order (Trigger getCode) -->
+  <div class="card">
+    <div class="card-title">📤 步骤一：提交订单（触发 getCode 转发）</div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:14px;">
+      模拟 A 公司向 C 系统提交订单，C 系统自动转发 getCode 请求到 B 公司。
+    </p>
+    <div class="config-grid" style="grid-template-columns:1fr 1fr auto;">
+      <div class="field">
+        <label>手机号</label>
+        <input type="text" id="step1Mobile" value="13812345678" placeholder="接收验证码的手机号">
+      </div>
+      <div class="field">
+        <label>渠道 PID (A 公司在 C 系统的标识)</label>
+        <input type="text" id="step1Pid" value="189" placeholder="如 189">
+      </div>
+      <div class="field" style="justify-content:flex-end;">
+        <label style="opacity:0;">操作</label>
+        <button class="btn btn-primary" id="btnStep1" onclick="executeStep1()">📤 提交订单 → 获取验证码</button>
+      </div>
+    </div>
+
+    <!-- Step 1 Details -->
+    <div id="step1Details" style="display:none;margin-top:14px;">
+      <!-- A → C -->
+      <div class="sub-step a-to-c">
+        <div class="sub-title"><span class="arrow">📤</span> A 公司 → C 系统：提交订单</div>
+        <div class="response-box" id="step1Request">等待请求...</div>
+        <div style="margin-top:8px;font-size:12px;font-weight:600;color:#64748b;">📥 C 系统响应：</div>
+        <div class="response-box" id="step1Response">等待响应...</div>
+      </div>
+      <!-- C → B (getCode) -->
+      <div class="sub-step c-to-b" id="step1ForwardBox" style="display:none;">
+        <div class="sub-title"><span class="arrow">🔄</span> C 系统 → B 公司：转发 getCode</div>
+        <div class="response-box" id="step1ForwardResponse">等待转发结果...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Submit Verification Code -->
+  <div class="card">
+    <div class="card-title">✉️ 步骤二：提交验证码（触发 submit 转发）</div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:14px;">
+      B 公司返回 linkId 后，填入收到的短信验证码，提交给 C 系统触发 submit 转发。
+    </p>
+    <div class="config-grid" style="grid-template-columns:1fr 1fr 1fr auto;">
+      <div class="field">
+        <label>手机号</label>
+        <input type="text" id="step2Mobile" placeholder="与步骤一一致">
+      </div>
+      <div class="field">
+        <label>验证码 ID (linkId)</label>
+        <input type="text" id="step2LinkId" placeholder="步骤一返回的 linkId">
+      </div>
+      <div class="field">
+        <label>短信验证码 (smsCode)</label>
+        <input type="text" id="step2SmsCode" placeholder="收到的验证码">
+      </div>
+      <div class="field" style="justify-content:flex-end;">
+        <label style="opacity:0;">操作</label>
+        <button class="btn btn-warning" id="btnStep2" onclick="executeStep2()">✉️ 提交验证码</button>
+      </div>
+    </div>
+
+    <!-- Step 2 Details -->
+    <div id="step2Details" style="display:none;margin-top:14px;">
+      <!-- A → C -->
+      <div class="sub-step a-to-c">
+        <div class="sub-title"><span class="arrow">📤</span> A 公司 → C 系统：提交验证码</div>
+        <div class="response-box" id="step2Response">等待响应...</div>
+      </div>
+      <!-- C → B (submit) -->
+      <div class="sub-step c-to-b" id="step2ForwardBox" style="display:none;">
+        <div class="sub-title"><span class="arrow">🔄</span> C 系统 → B 公司：转发 submit</div>
+        <div class="response-box" id="step2ForwardResponse">等待转发结果...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forward Order Query -->
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between;">
+      <span>📋 转发记录查询</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin:0;">
+          <input type="text" id="queryMobile" placeholder="手机号搜索" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;width:160px;">
+          <button class="btn btn-primary btn-sm" onclick="queryForwardOrders()">🔍 查询</button>
+          <button class="btn btn-outline btn-sm" onclick="queryForwardOrders()">⟳ 刷新</button>
+        </div>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:50px;">ID</th>
+            <th>源订单号</th>
+            <th>手机号</th>
+            <th style="width:60px;">源PID</th>
+            <th style="width:60px;">目标PID</th>
+            <th style="width:70px;">状态</th>
+            <th style="width:60px;">步骤</th>
+            <th>错误信息</th>
+            <th style="width:140px;">创建时间</th>
+            <th style="width:80px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="forwardTableBody">
+          <tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:40px;">请先登录后查询</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="queryPagination" style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:14px;display:none;">
+      <button class="btn btn-outline btn-sm" id="queryPrevPage" onclick="changeQueryPage(-1)" disabled>上一页</button>
+      <span class="page-info" style="font-size:13px;color:#64748b;" id="queryPageInfo">第 0 / 0 页</span>
+      <button class="btn btn-outline btn-sm" id="queryNextPage" onclick="changeQueryPage(1)" disabled>下一页</button>
+    </div>
+  </div>
+
+  <!-- Timeline / Callback Log -->
+  <div class="card">
+    <div class="card-title">📜 完整流程时间线</div>
+    <div id="timelineContainer" class="timeline">
+      <div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px;">等待操作开始...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Step Detail Modal -->
+<div class="modal-overlay" id="stepDetailModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="stepModalTitle">步骤详情</h3>
+      <button class="modal-close" onclick="closeStepModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="stepDetailList">
+      <div style="text-align:center;color:#94a3b8;padding:20px;">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================== Globals ==============================
+let authToken = '';
+let queryCurrentPage = 1;
+
+// ============================== Helpers ==============================
+function getBaseUrl() {
+  const url = document.getElementById('apiUrl').value;
+  return url.replace(/\/v2\/third-channel(-test)?$/, '');
+}
+
+function getEnvSuffix() {
+  const url = document.getElementById('apiUrl').value;
+  return url.includes('third-channel-test') ? 'test' : 'prod';
+}
+
+function addTimeline(type, title, detail) {
+  const container = document.getElementById('timelineContainer');
+  const empty = container.querySelector('div[style*="text-align:center"]');
+  if (empty) empty.remove();
+
+  const t = new Date().toLocaleTimeString();
+  const div = document.createElement('div');
+  div.className = 'timeline-item ' + type;
+  div.innerHTML = `
+    <span class="tl-time">[${t}]</span>
+    <div class="tl-title">${title}</div>
+    <div class="tl-detail">${detail || ''}</div>
+  `;
+  container.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function addLog(msg, type) {
+  const container = document.getElementById('timelineContainer');
+  const empty = container.querySelector('div[style*="text-align:center"]');
+  if (empty) empty.remove();
+  const t = new Date().toLocaleTimeString();
+  const div = document.createElement('div');
+  div.className = 'log-line log-' + (type || 'info');
+  div.innerHTML = `<span style="color:#64748b;">[${t}]</span> ${msg}`;
+  container.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ============================== Login ==============================
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  if (!phone || !password) { alert('请输入手机号和密码'); return; }
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.innerHTML = '登录中...';
+  try {
+    const baseUrl = getBaseUrl();
+    const res = await fetch(baseUrl + '/v1/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ phone, password })
+    });
+    const json = await res.json();
+    if ((json.code === 0 || json.code === 200) && json.data && json.data.token) {
+      authToken = json.data.token;
+      document.getElementById('loginStatus').innerHTML = '<span style="color:#22c55e;">✅ 已登录</span>';
+      document.getElementById('btnLogin').style.display = 'none';
+      document.getElementById('btnLogout').style.display = '';
+      addTimeline('ok', '登录成功', 'Token: ' + authToken.substring(0, 20) + '...');
+    } else {
+      alert('登录失败: ' + (json.message || '账号或密码错误'));
+      addTimeline('err', '登录失败', json.message || '账号或密码错误');
+    }
+  } catch (e) {
+    alert('登录异常: ' + e.message);
+    addTimeline('err', '登录异常', e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🔑 登录';
+  }
+}
+
+function doLogout() {
+  authToken = '';
+  document.getElementById('loginStatus').innerHTML = '未登录';
+  document.getElementById('btnLogin').style.display = '';
+  document.getElementById('btnLogout').style.display = 'none';
+}
+
+// ============================== Auth Request ==============================
+async function authRequest(method, url, body) {
+  if (!authToken) { throw new Error('未登录'); }
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Authorization': 'Bearer ' + authToken
+  };
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  const response = await fetch(url, opts);
+  const ct = response.headers.get('content-type');
+  return ct && ct.includes('application/json') ? await response.json() : await response.text();
+}
+
+// ============================== Core Request (with signature) ==============================
+async function coreRequest(method, url, data, secret) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  const signStr = secret + timestamp + nonce + JSON.stringify(data);
+  const signature = CryptoJS.SHA256(signStr).toString();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-PID': String(data.pid || ''),
+    'X-Signature': signature,
+    'X-Timestamp': timestamp,
+    'X-Nonce': nonce
+  };
+  const response = await fetch(url, { method, headers, body: JSON.stringify(data) });
+  const ct = response.headers.get('content-type');
+  const body = ct && ct.includes('application/json') ? await response.json() : await response.text();
+  return { ok: response.ok, status: response.status, data: body };
+}
+
+// ============================== Step 1: Send Order ==============================
+async function executeStep1() {
+  const apiUrl = document.getElementById('apiUrl').value.trim();
+  const secret = document.getElementById('appSecret').value.trim();
+  const mobile = document.getElementById('step1Mobile').value.trim();
+  const pid = document.getElementById('step1Pid').value.trim();
+  const bProductId = document.getElementById('bProductId').value.trim();
+  const bChannelId = document.getElementById('bChannelId').value.trim();
+  const bFee = document.getElementById('bFee').value.trim();
+  const bCpid = document.getElementById('bCpid').value.trim();
+
+  if (!mobile) { alert('请输入手机号'); return; }
+  if (!pid) { alert('请输入渠道 PID'); return; }
+  if (!apiUrl || !secret) { alert('请配置 API 地址和密钥'); return; }
+
+  const btn = document.getElementById('btnStep1');
+  btn.disabled = true; btn.innerHTML = '⏳ 处理中...';
+
+  // Show details section
+  document.getElementById('step1Details').style.display = 'block';
+  document.getElementById('step1Request').innerText = '构建请求中...';
+  document.getElementById('step1Response').innerText = '等待响应...';
+  document.getElementById('step1ForwardBox').style.display = 'none';
+  document.getElementById('step1ForwardResponse').innerText = '等待转发结果...';
+
+  // Build A company order data
+  const orderData = {
+    pid: pid,
+    bus_code: '001',
+    sku_code: '002',
+    order_no: 'VCODE_' + Date.now(),
+    user_phone: mobile,
+    user_nick: '验证码测试',
+    order_time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    price: 0.01,
+    quantity: 1,
+    total_amount: 0.01,
+    province_code: '44',
+    city_code: '4401',
+    order_status: '1',
+    type: '1',
+    user_status: '0'
+  };
+
+  // Show request
+  document.getElementById('step1Request').innerText = JSON.stringify(orderData, null, 2);
+
+  addTimeline('warn', '步骤一：提交订单', '向 C 系统提交订单，触发 getCode 转发流程...');
+
+  try {
+    const res = await coreRequest('POST', apiUrl, orderData, secret);
+    document.getElementById('step1Response').innerText = JSON.stringify(res.data, null, 2);
+    document.getElementById('step1Response').className = 'response-box ' + (res.ok ? 'success' : 'error');
+
+    if (res.ok) {
+      addTimeline('ok', 'C 系统接收订单成功', '订单号: ' + orderData.order_no);
+
+      // Try to extract linkId from response
+      const linkId = res.data?.data?.linkId || res.data?.linkId || null;
+      if (linkId) {
+        document.getElementById('step2LinkId').value = linkId;
+        document.getElementById('step2Mobile').value = mobile;
+        addTimeline('ok', 'B 公司返回 linkId', 'linkId: ' + linkId + '（已自动填入步骤二）');
+      }
+
+      // Show forward details if available
+      const forwardOrderId = res.data?.data?.forward_order_id || null;
+      if (forwardOrderId) {
+        document.getElementById('step1ForwardBox').style.display = 'block';
+        document.getElementById('step1ForwardResponse').innerText = 'ForwardOrder ID: ' + forwardOrderId + '\n等待队列处理...';
+        // Auto query
+        document.getElementById('queryMobile').value = mobile;
+        setTimeout(() => queryForwardOrders(), 1500);
+      } else {
+        // Still show forward box - might be processing in queue
+        document.getElementById('step1ForwardBox').style.display = 'block';
+        document.getElementById('step1ForwardResponse').innerText = '订单已提交，C 系统正在异步处理 getCode 转发...\n请稍后查看转发记录。';
+        document.getElementById('queryMobile').value = mobile;
+        setTimeout(() => queryForwardOrders(), 2000);
+      }
+    } else {
+      addTimeline('err', 'C 系统拒绝订单', JSON.stringify(res.data));
+      document.getElementById('step1ForwardBox').style.display = 'block';
+      document.getElementById('step1ForwardResponse').innerText = '订单提交失败，无法触发转发流程';
+      document.getElementById('step1ForwardResponse').className = 'response-box error';
+    }
+  } catch (e) {
+    document.getElementById('step1Response').innerText = '异常: ' + e.message;
+    document.getElementById('step1Response').className = 'response-box error';
+    addTimeline('err', '请求异常', e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '📤 提交订单 → 获取验证码';
+  }
+}
+
+// ============================== Step 2: Submit Verification Code ==============================
+async function executeStep2() {
+  if (!authToken) { alert('请先登录'); return; }
+
+  const baseUrl = getBaseUrl();
+  const mobile = document.getElementById('step2Mobile').value.trim();
+  const linkId = document.getElementById('step2LinkId').value.trim();
+  const smsCode = document.getElementById('step2SmsCode').value.trim();
+
+  if (!mobile) { alert('请输入手机号'); return; }
+  if (!linkId) { alert('请输入验证码 ID (linkId)'); return; }
+  if (!smsCode) { alert('请输入短信验证码 (smsCode)'); return; }
+
+  const btn = document.getElementById('btnStep2');
+  btn.disabled = true; btn.innerHTML = '⏳ 提交中...';
+
+  // Show details
+  document.getElementById('step2Details').style.display = 'block';
+  document.getElementById('step2Response').innerText = '提交中...';
+  document.getElementById('step2ForwardBox').style.display = 'none';
+
+  const isTest = getEnvSuffix() === 'test';
+  const apiUrl = baseUrl + '/v2/third-channel' + (isTest ? '-test' : '') + '/verify-submit';
+
+  const payload = { mobile, linkId, smsCode };
+
+  addTimeline('warn', '步骤二：提交验证码', '向 C 系统提交验证码，触发 submit 转发...');
+
+  try {
+    const json = await authRequest('POST', apiUrl, payload);
+    document.getElementById('step2Response').innerText = JSON.stringify(json, null, 2);
+    document.getElementById('step2Response').className = 'response-box ' + ((json.code === 0 || json.code === 200) ? 'success' : 'error');
+
+    if (json.code === 0 || json.code === 200) {
+      addTimeline('ok', '验证码提交成功', 'ForwardOrder ID: ' + (json.data?.forward_order_id || 'N/A') + '，C 系统正在异步处理 submit 转发...');
+
+      document.getElementById('step2ForwardBox').style.display = 'block';
+      document.getElementById('step2ForwardResponse').innerText = '验证码已提交，C 系统正在异步执行 submit 转发...\n请稍后查看转发记录了解最终结果。';
+
+      // Auto refresh
+      setTimeout(() => queryForwardOrders(), 2000);
+    } else {
+      addTimeline('err', '验证码提交失败', json.message || '未知错误');
+    }
+  } catch (e) {
+    document.getElementById('step2Response').innerText = '异常: ' + e.message;
+    document.getElementById('step2Response').className = 'response-box error';
+    addTimeline('err', '请求异常', e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '✉️ 提交验证码';
+  }
+}
+
+// ============================== Forward Order Query ==============================
+async function queryForwardOrders(page) {
+  if (!authToken) { alert('请先登录'); return; }
+  queryCurrentPage = page || 1;
+  const baseUrl = getBaseUrl();
+  const mobile = document.getElementById('queryMobile').value.trim();
+  if (!mobile) { alert('请输入手机号'); return; }
+
+  const params = new URLSearchParams();
+  params.set('page', queryCurrentPage);
+  params.set('per_page', '15');
+  params.set('mobile', mobile);
+
+  try {
+    const json = await authRequest('GET', baseUrl + '/v1/forward-orders?' + params.toString());
+    const data = json.data || { data: [], current_page: 1, last_page: 1, total: 0 };
+    const list = data.data || [];
+    renderForwardOrders(list);
+    document.getElementById('queryPageInfo').textContent = `第 ${data.current_page || 1} / ${data.last_page || 1} 页 (共 ${data.total || 0} 条)`;
+    document.getElementById('queryPrevPage').disabled = (data.current_page || 1) <= 1;
+    document.getElementById('queryNextPage').disabled = (data.current_page || 1) >= (data.last_page || 1);
+    document.getElementById('queryPagination').style.display = 'flex';
+  } catch (e) {
+    document.getElementById('forwardTableBody').innerHTML = `<tr><td colspan="10" style="text-align:center;color:#ef4444;padding:40px;">加载失败: ${e.message}</td></tr>`;
+  }
+}
+
+function renderForwardOrders(orders) {
+  const vStatusMap = {
+    0: { text: '⏳待处理', cls: 'pending' },
+    1: { text: '✅成功', cls: 'ok' },
+    2: { text: '❌失败', cls: 'fail' },
+    4: { text: '✉️待验证', cls: 'verify' }
+  };
+  const tbody = document.getElementById('forwardTableBody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:40px;">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => {
+    const st = vStatusMap[o.forward_status] || { text: '未知', cls: '' };
+    const stepName = o.current_step === 0 ? '验证码' : o.current_step === 1 ? '提交' : o.current_step > 1 ? '完成' : '-';
+    return `<tr>
+      <td>${o.id}</td>
+      <td><strong>${o.source_order_no}</strong></td>
+      <td>${o.mobile || '-'}</td>
+      <td>${o.source_pid}</td>
+      <td>${o.target_pid}</td>
+      <td><span class="status-badge ${st.cls}">${st.text}</span></td>
+      <td style="font-size:12px;color:#64748b;">${stepName}</td>
+      <td style="font-size:12px;color:#ef4444;max-width:200px;overflow:hidden;text-overflow:ellipsis;">${o.forward_error || '-'}</td>
+      <td style="font-size:12px;color:#64748b;">${o.created_at || ''}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="showStepDetail(${o.id})" title="查看步骤详情">📋 详情</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function changeQueryPage(offset) { queryForwardOrders(queryCurrentPage + offset); }
+
+// ============================== Step Detail Modal ==============================
+async function showStepDetail(id) {
+  if (!authToken) { alert('请先登录'); return; }
+  const modal = document.getElementById('stepDetailModal');
+  const list = document.getElementById('stepDetailList');
+  document.getElementById('stepModalTitle').textContent = '步骤详情 #' + id;
+  list.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;">加载中...</div>';
+  modal.classList.add('show');
+
+  const baseUrl = getBaseUrl();
+  try {
+    const json = await authRequest('GET', baseUrl + '/v1/forward-orders/' + id);
+    const order = json.data || {};
+    const stepResponses = order.step_responses || [];
+    const stepData = order.step_data || {};
+
+    let html = '';
+
+    // Basic info
+    html += `<div style="background:#f0fdf4;border-radius:8px;padding:14px;margin-bottom:16px;">
+      <div style="font-weight:700;margin-bottom:10px;">📋 基本信息</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">
+        <div><strong>源订单号：</strong>${order.source_order_no || '-'}</div>
+        <div><strong>手机号：</strong>${order.mobile || '-'}</div>
+        <div><strong>源 PID：</strong>${order.source_pid || '-'}</div>
+        <div><strong>目标 PID：</strong>${order.target_pid || '-'}</div>
+        <div><strong>状态：</strong>${
+          order.forward_status === 4 ? '<span style="color:#6366f1;font-weight:600;">✉️待验证</span>' :
+          order.forward_status === 1 ? '<span style="color:#22c55e;font-weight:600;">✅成功</span>' :
+          order.forward_status === 2 ? '<span style="color:#ef4444;font-weight:600;">❌失败</span>' :
+          '<span style="color:#f59e0b;font-weight:600;">⏳待处理</span>'
+        }</div>
+        <div><strong>当前步骤：</strong>${order.current_step || 0}</div>
+        <div><strong>重试次数：</strong>${order.retry_count || 0}</div>
+      </div>
+    </div>`;
+
+    // Step data
+    if (Object.keys(stepData).length > 0) {
+      html += `<div style="background:#fffbeb;border-radius:8px;padding:14px;margin-bottom:16px;">
+        <div style="font-weight:700;margin-bottom:8px;">🔗 步骤间传递数据 (step_data)</div>
+        <pre style="font-size:12px;background:#fff;padding:10px;border-radius:6px;border:1px solid #fde68a;overflow-x:auto;margin:0;">${JSON.stringify(stepData, null, 2)}</pre>
+      </div>`;
+    }
+
+    // Step responses
+    if (stepResponses.length > 0) {
+      html += `<div style="font-weight:700;margin-bottom:10px;">📝 步骤响应记录 (${stepResponses.length} 步)</div>`;
+      stepResponses.forEach((sr, idx) => {
+        const isSuccess = sr.response?.state === 'success' || sr.response?.errorCode === undefined || sr.response?.errorCode === null || sr.response?.code === 0 || sr.response?.code === 200;
+        html += `<div style="background:${isSuccess ? '#f0fdf4' : '#fef2f2'};border-radius:8px;padding:14px;margin-bottom:12px;border-left:4px solid ${isSuccess ? '#22c55e' : '#ef4444'};">
+          <div style="font-weight:600;font-size:13px;margin-bottom:8px;">
+            <span style="display:inline-flex;align-items:center;gap:4px;">
+              ${isSuccess ? '✅' : '❌'} 步骤 ${idx + 1}: ${sr.step_name || 'step_' + sr.step_index}
+            </span>
+            <span style="float:right;font-size:12px;color:#94a3b8;">${sr.time || ''}</span>
+          </div>
+          <details>
+            <summary style="cursor:pointer;font-size:12px;color:#6366f1;font-weight:600;">查看请求 / 响应详情</summary>
+            <div style="margin-top:10px;">
+              <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">📤 请求数据 (transformed_data)：</div>
+              <pre style="font-size:11px;background:#1e293b;color:#94a3b8;padding:10px;border-radius:6px;overflow-x:auto;max-height:150px;margin:0 0 10px;">${JSON.stringify(sr.request || {}, null, 2)}</pre>
+              <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">📥 B 公司响应：</div>
+              <pre style="font-size:11px;background:#1e293b;color:#94a3b8;padding:10px;border-radius:6px;overflow-x:auto;max-height:200px;margin:0;">${JSON.stringify(sr.response || {}, null, 2)}</pre>
+            </div>
+          </details>
+        </div>`;
+      });
+    } else {
+      html += '<div style="text-align:center;color:#94a3b8;padding:20px;">暂无步骤响应记录（队列可能正在处理中）</div>';
+    }
+
+    list.innerHTML = html;
+  } catch (e) {
+    list.innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px;">加载失败: ' + e.message + '</div>';
+  }
+}
+
+function closeStepModal() { document.getElementById('stepDetailModal').classList.remove('show'); }
+document.getElementById('stepDetailModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeStepModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStepModal(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+# 代码索引（generated / 依据 backend/app 实际文件，非穷尽；订单域优先）
+
+generated_at: "2026-09-02"
+scope: "backend/app（controllers/models/services/jobs/listeners/events）"
+
+controllers:
+  api_v1:
+    - { class: "AuthController", path: "app/Http/Controllers/AuthController.php" }
+    - { class: "UserController", path: "app/Http/Controllers/UserController.php" }
+    - { class: "OrganizationController", path: "app/Http/Controllers/OrganizationController.php" }
+    - { class: "DepartmentController", path: "app/Http/Controllers/DepartmentController.php" }
+    - { class: "EmployeeController", path: "app/Http/Controllers/EmployeeController.php" }
+    - { class: "PositionController", path: "app/Http/Controllers/PositionController.php" }
+    - { class: "RegionController", path: "app/Http/Controllers/RegionController.php" }
+    - { class: "API/BusinessController", path: "app/Http/Controllers/API/BusinessController.php" }
+    - { class: "API/ProductController", path: "app/Http/Controllers/API/ProductController.php" }
+    - { class: "API/ThirdChannelController", path: "app/Http/Controllers/API/ThirdChannelController.php" }
+    - { class: "API/ProductOrderController", path: "app/Http/Controllers/API/ProductOrderController.php" }
+    - { class: "Contract/MasterContractController", path: "app/Http/Controllers/Contract/MasterContractController.php" }
+    - { class: "Contract/ExecutionContractController", path: "app/Http/Controllers/Contract/ExecutionContractController.php" }
+  api_v2 (third-channel):
+    - { class: "API/ThirdChannel/ReceiverController", path: "app/Http/Controllers/API/ThirdChannel/ReceiverController.php", note: "核心接收入口" }
+    - { class: "API/ThirdChannel/CallbackController", path: "app/Http/Controllers/API/ThirdChannel/CallbackController.php" }
+    - { class: "API/ThirdChannel/ForwardOrderController", path: "app/Http/Controllers/API/ThirdChannel/ForwardOrderController.php" }
+    - { class: "API/ThirdChannel/QuanyuOrdersController", path: "app/Http/Controllers/API/ThirdChannel/QuanyuOrdersController.php", note: "遗留读/取消/重试" }
+    - { class: "API/ThirdChannel/PushStatsController", path: "app/Http/Controllers/API/ThirdChannel/PushStatsController.php" }
+    - { class: "API/TianxuanOrdersController", path: "app/Http/Controllers/API/TianxuanOrdersController.php", note: "死代码" }
+
+services:
+  third_channel:
+    - { class: "ForwardService", path: "app/Services/ThirdChannel/ForwardService.php", note: "核心多步转发" }
+    - { class: "ChannelConfigLoader", path: "app/Services/ThirdChannel/ChannelConfigLoader.php" }
+    - { class: "DataMapper", path: "app/Services/ThirdChannel/DataMapper.php" }
+    - { class: "SignService", path: "app/Services/ThirdChannel/SignService.php" }
+    - { class: "CallbackInterpreter", path: "app/Services/ThirdChannel/CallbackInterpreter.php" }
+    - { class: "ChannelFactory", path: "app/Services/ThirdChannel/ChannelFactory.php" }
+    - { class: "ThirdChannelService", path: "app/Services/ThirdChannel/ThirdChannelService.php" }
+    - { class: "QuanyuService", path: "app/Services/ThirdChannel/QuanyuService.php", note: "遗留，写路径未接线" }
+  core:
+    - { class: "PushService", path: "app/Services/PushService.php" }
+    - { class: "RuleEngine", path: "app/Services/RuleEngine.php" }
+    - { class: "BusinessService", path: "app/Services/BusinessService.php" }
+    - { class: "OrganizationService", path: "app/Services/OrganizationService.php" }
+    - { class: "ThirdPartyApiService", path: "app/Services/ThirdPartyApiService.php" }
+    - { class: "TianxuanOrderService", path: "app/Services/TianxuanOrderService.php", note: "死代码" }
+  contract:
+    - { class: "ExecutionContractService", path: "app/Services/Contract/ExecutionContractService.php" }
+    - { class: "MasterContractStateMachine", path: "app/Services/Contract/MasterContractStateMachine.php" }
+  reports:
+    - { class: "ProductOrderReportService", path: "app/Services/Reports/ProductOrderReportService.php" }
+
+models (order-channel 关键):
+  - { class: "ThirdChannels", path: "app/Models/ThirdChannels.php" }
+  - { class: "ForwardOrder", path: "app/Models/ForwardOrder.php" }
+  - { class: "ProductOrder", path: "app/Models/ProductOrder.php" }
+  - { class: "QuanyuOrder", path: "app/Models/QuanyuOrder.php", note: "废弃" }
+  - { class: "TianxuanOrder", path: "app/Models/TianxuanOrder.php", note: "死代码" }
+  - { class: "ChannelProducts", path: "app/Models/ChannelProducts.php" }
+  - { class: "Products", path: "app/Models/Products.php" }
+  - { class: "Business", path: "app/Models/Business.php" }
+  - { class: "BusinessRule", path: "app/Models/BusinessRule.php" }
+  - { class: "CallbackLog", path: "app/Models/CallbackLog.php" }
+
+jobs:
+  - { class: "ProcessOrderJob", path: "app/Jobs/ProcessOrderJob.php" }
+  - { class: "ForwardOrderJob", path: "app/Jobs/ForwardOrderJob.php" }
+  - { class: "ProcessCallbackJob", path: "app/Jobs/ProcessCallbackJob.php" }
+  - { class: "NotifyOriginJob", path: "app/Jobs/NotifyOriginJob.php" }
+  - { class: "PushToXinquanyu", path: "app/Jobs/PushToXinquanyu.php", note: "遗留/死代码" }
+  - { class: "OrderProcessJob", path: "app/Jobs/OrderProcessJob.php", note: "仅命中 pid==='186'，0 影响" }
+  - { class: "AsyncOrderAuditJob", path: "app/Jobs/AsyncOrderAuditJob.php" }
+  - { class: "AlertJob", path: "app/Jobs/AlertJob.php" }
+
+listeners:
+  - { class: "OrderProcessListener", path: "app/Listeners/OrderProcessListener.php", note: "未注册" }
+  - { class: "AsyncOrderAuditListener", path: "app/Listeners/AsyncOrderAuditListener.php", note: "未注册" }
+
+events:
+  - { class: "OrderCreated", path: "app/Events/OrderCreated.php" }
+  - { class: "OrderStatusUpdated", path: "app/Events/OrderStatusUpdated.php" }

@@ -1,0 +1,74 @@
+# 数据库表关系（FK / 引用）
+
+relations:
+  - id: "rel.db_third_channels_org"
+    from: "db.table.third_channels"
+    to: "db.table.organizations"
+    type: "references"
+    strength: "normal"
+    reason: "third_channels.organization_id → organizations.id"
+    source: ["database_schema", "verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.db_channel_products_channel"
+    from: "db.table.channel_products"
+    to: "db.table.third_channels"
+    type: "references"
+    strength: "strong"
+    reason: "channel_products.channel_id → third_channels.id"
+    source: ["database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.db_channel_products_product"
+    from: "db.table.channel_products"
+    to: "db.table.products"
+    type: "references"
+    strength: "strong"
+    reason: "channel_products.product_id → products.id"
+    source: ["database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.db_products_business"
+    from: "db.table.products"
+    to: "db.table.business"
+    type: "references"
+    strength: "strong"
+    reason: "products.business_id → business.id（注意：products 无 business_code 列）"
+    source: ["database_schema", "verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.db_products_carrier"
+    from: "db.table.products"
+    to: "db.table.carrier"
+    type: "references"
+    strength: "normal"
+    reason: "products.carrier_id → carrier.id"
+    source: ["database_schema"]
+    confidence: "confirmed"
+
+  - id: "rel.db_forward_source_channel"
+    from: "db.table.forward_orders"
+    to: "db.table.third_channels"
+    type: "references"
+    strength: "strong"
+    reason: "forward_orders.source_channel_id → third_channels.id"
+    source: ["database_schema", "verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.db_forward_target_channel"
+    from: "db.table.forward_orders"
+    to: "db.table.third_channels"
+    type: "references"
+    strength: "strong"
+    reason: "forward_orders.target_channel_id → third_channels.id"
+    source: ["database_schema", "verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.db_product_orders_channel"
+    from: "db.table.product_orders"
+    to: "db.table.third_channels"
+    type: "references"
+    strength: "strong"
+    reason: "product_orders.channel_id / pid 关联渠道"
+    source: ["database_schema", "verified_code"]
+    confidence: "confirmed"

@@ -1,0 +1,185 @@
+# 业务实体 —— 组织/合同/项目财务域
+
+# 组织（公司）
+business.organization:
+  id: "business.organization"
+  type: "business_entity"
+  name: "组织"
+  description: "组织架构根节点（organizations）：公司主体，可含树结构、银行账户、合作关系。"
+  owner: "module.org-hr"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["组织"]
+  last_verified: "2026-09-02"
+
+business.department:
+  id: "business.department"
+  type: "business_entity"
+  name: "部门"
+  description: "部门（departments），隶属组织。"
+  owner: "module.org-hr"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["组织"]
+  last_verified: "2026-09-02"
+
+business.position:
+  id: "business.position"
+  type: "business_entity"
+  name: "岗位"
+  description: "岗位（positions）。"
+  owner: "module.org-hr"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["组织"]
+  last_verified: "2026-09-02"
+
+business.employee:
+  id: "business.employee"
+  type: "business_entity"
+  name: "员工"
+  description: "员工（employees），支持离职/复职、调岗（employee_transfers）、分配（employee-assignments）。"
+  owner: "module.org-hr"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["组织"]
+  last_verified: "2026-09-02"
+
+business.region:
+  id: "business.region"
+  type: "business_entity"
+  name: "地区"
+  description: "地区（areas / region），行政区划。"
+  owner: "module.org-hr"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["基础数据"]
+  last_verified: "2026-09-02"
+
+# 框架合同
+business.master_contract:
+  id: "business.master_contract"
+  type: "business_entity"
+  name: "框架合同"
+  description: "框架合同（master_contracts）：增删改查 + 提交/撤回/审核/废止/到期/条款，含日志、变更、补充协议。"
+  owner: "module.contract"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["合同", "审核流转"]
+  last_verified: "2026-09-02"
+
+# 执行合同
+business.execution_contract:
+  id: "business.execution_contract"
+  type: "business_entity"
+  name: "执行合同"
+  description: "执行合同（execution_contracts）：由框架合同拆分，含审核流转。"
+  owner: "module.contract"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["合同", "审核流转"]
+  last_verified: "2026-09-02"
+
+# 项目
+business.project:
+  id: "business.project"
+  type: "business_entity"
+  name: "项目"
+  description: "项目（projects），含投标、分包、结算、应收、应付。"
+  owner: "module.project"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["项目"]
+  last_verified: "2026-09-02"
+
+business.project_bid:
+  id: "business.project_bid"
+  type: "business_entity"
+  name: "项目投标"
+  description: "项目投标（project_bids）。"
+  owner: "module.project"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["项目"]
+  last_verified: "2026-09-02"
+
+business.settlement:
+  id: "business.settlement"
+  type: "business_entity"
+  name: "结算"
+  description: "结算（settlements / project_settlements + settlement_details/items）。"
+  owner: "module.finance"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["财务"]
+  last_verified: "2026-09-02"
+
+business.project_receivable:
+  id: "business.project_receivable"
+  type: "business_entity"
+  name: "项目应收"
+  description: "项目应收（project_receivables）。"
+  owner: "module.finance"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["财务"]
+  last_verified: "2026-09-02"
+
+business.project_payable:
+  id: "business.project_payable"
+  type: "business_entity"
+  name: "项目应付"
+  description: "项目应付（project_payables）。"
+  owner: "module.finance"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["财务"]
+  last_verified: "2026-09-02"
+
+business.invoice:
+  id: "business.invoice"
+  type: "business_entity"
+  name: "发票"
+  description: "发票（invoices）。"
+  owner: "module.finance"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["财务"]
+  last_verified: "2026-09-02"
+
+business.salary:
+  id: "business.salary"
+  type: "business_entity"
+  name: "薪酬"
+  description: "薪酬（salary_details / salary_payments）。"
+  owner: "module.finance"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["财务"]
+  last_verified: "2026-09-02"
+
+business.tax:
+  id: "business.tax"
+  type: "business_entity"
+  name: "税务申报"
+  description: "税务申报（tax_declarations）。"
+  owner: "module.finance"
+  status: "active"
+  source: ["verified_code", "database_schema"]
+  confidence: "confirmed"
+  tags: ["财务"]
+  last_verified: "2026-09-02"

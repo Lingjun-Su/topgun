@@ -1,0 +1,67 @@
+# 依赖关系（模块间 + 反向被依赖）
+
+relations:
+  # 模块依赖
+  - id: "rel.module_order_depends_channel"
+    from: "module.order"
+    to: "module.channel"
+    type: "depends_on"
+    strength: "critical"
+    reason: "订单接收/中转依赖渠道配置（role、push_steps、签名、forward_target_pid）"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.module_order_depends_business_data"
+    from: "module.order"
+    to: "module.business-data"
+    type: "depends_on"
+    strength: "critical"
+    reason: "订单校验依赖 channel_products + products + business 归属（bus_code/sku_code）"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.module_channel_depends_org"
+    from: "module.channel"
+    to: "module.org-hr"
+    type: "depends_on"
+    strength: "normal"
+    reason: "渠道归属组织（organization_id）"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.module_contract_depends_org"
+    from: "module.contract"
+    to: "module.org-hr"
+    type: "depends_on"
+    strength: "normal"
+    reason: "合同归属组织主体"
+    source: ["database_schema"]
+    confidence: "probable"
+
+  - id: "rel.module_report_depends_order"
+    from: "module.report"
+    to: "module.order"
+    type: "depends_on"
+    strength: "strong"
+    reason: "报表读取产品订单与推送统计"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  # 反向：谁依赖订单模块（修改 product_orders / forward_orders 的影响面）
+  - id: "rel.reverse_order_report"
+    from: "module.report"
+    to: "business.product_order"
+    type: "affects"
+    strength: "strong"
+    reason: "改 product_orders 结构会影响报表"
+    source: ["agent_inference"]
+    confidence: "probable"
+
+  - id: "rel.reverse_channel_order"
+    from: "business.product_order"
+    to: "business.channel"
+    type: "affects"
+    strength: "strong"
+    reason: "改 third_channels 渠道身份/能力会影响订单接收与中转"
+    source: ["agent_inference"]
+    confidence: "probable"

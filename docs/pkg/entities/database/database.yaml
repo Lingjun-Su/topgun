@@ -1,0 +1,234 @@
+# 数据库表实体（关键表）
+
+# third_channels —— 渠道主表
+db.table.third_channels:
+  id: "db.table.third_channels"
+  type: "database_table"
+  name: "third_channels"
+  database: "topgun"
+  module: "module.channel"
+  primary_key: [id]
+  fields:
+    id: { type: "bigint", nullable: false }
+    name: { type: "varchar", nullable: false }
+    pid: { type: "varchar", nullable: false, note: "渠道唯一标识" }
+    key: { type: "varchar", note: "签名密钥" }
+    role: { type: "varchar", note: "supplier_a / channel_c / unset（2026_09_01 新增）" }
+    method: { type: "varchar", note: "接收/发送/转发，能力位" }
+    status: { type: "int" }
+    organization_id: { type: "bigint", note: "-> organizations.id" }
+    is_ip_restricted: { type: "bit" }
+    ip_whitelist: { type: "text" }
+    push_base_url: { type: "varchar" }
+    push_endpoint: { type: "varchar" }
+    push_steps: { type: "text", note: "JSON 多步骤推送配置" }
+    push_success_rule: { type: "text", note: "JSON" }
+    push_fail_rule: { type: "text", note: "JSON" }
+    auto_forward: { type: "bit" }
+    forward_target_pid: { type: "varchar", note: "允许自指向" }
+    auto_callback_enabled: { type: "bit" }
+    callback_config: { type: "text", note: "JSON" }
+    ext_config: { type: "text", note: "JSON legacy" }
+    deleted_at: { type: "datetime", note: "SoftDeletes" }
+  indexes: ["idx pid", "idx organization_id"]
+  source: ["database_schema"]
+  confidence: "confirmed"
+
+# product_orders —— 产品订单主表
+db.table.product_orders:
+  id: "db.table.product_orders"
+  type: "database_table"
+  name: "product_orders"
+  database: "topgun"
+  module: "module.order"
+  primary_key: [id]
+  fields:
+    id: { type: "bigint", nullable: false }
+    order_no: { type: "varchar", nullable: false }
+    pid: { type: "varchar" }
+    product_id: { type: "bigint" }
+    business_id: { type: "bigint" }
+    channel_id: { type: "bigint" }
+    organization_id: { type: "bigint" }
+    order_status: { type: "int" }
+    price: { type: "decimal" }
+    total_amount: { type: "decimal" }
+    internal_amount: { type: "decimal" }
+    trace_id: { type: "varchar" }
+    link_id: { type: "varchar" }
+    forward_log: { type: "text" }
+    code: { type: "varchar", note: "验证码" }
+    sms_time: { type: "datetime" }
+    sync_status: { type: "int" }
+    verification_code: { type: "varchar" }
+    deleted_at: { type: "datetime" }
+  indexes: ["idx order_no", "idx pid"]
+  source: ["database_schema", "verified_code"]
+  confidence: "confirmed"
+
+# forward_orders —— 中转编排表
+db.table.forward_orders:
+  id: "db.table.forward_orders"
+  type: "database_table"
+  name: "forward_orders"
+  database: "topgun"
+  module: "module.order"
+  primary_key: [id]
+  fields:
+    id: { type: "bigint", nullable: false }
+    source_channel_id: { type: "bigint" }
+    target_channel_id: { type: "bigint", nullable: true }
+    source_order_no: { type: "varchar" }
+    target_order_no: { type: "varchar", nullable: true }
+    source_pid: { type: "varchar" }
+    target_pid: { type: "varchar", nullable: true }
+    source_data: { type: "text", note: "JSON" }
+    transformed_data: { type: "text", note: "JSON" }
+    target_response: { type: "text", note: "JSON" }
+    forward_status: { type: "tinyint", note: "0/1/2/4" }
+    forward_error: { type: "text" }
+    callback_url: { type: "varchar" }
+    callback_status: { type: "tinyint" }
+    callback_response: { type: "text" }
+    retry_count: { type: "tinyint" }
+    current_step: { type: "int", note: "2026_08_10 新增" }
+    step_data: { type: "text" }
+    step_responses: { type: "text" }
+    mobile: { type: "varchar" }
+    verify_attempts: { type: "int" }
+    organization_id: { type: "bigint" }
+  indexes: ["source_order_no", "forward_status", "source_channel_id", "target_channel_id"]
+  source: ["database_schema", "verified_code"]
+  confidence: "confirmed"
+
+# quanyu_orders —— 废弃
+db.table.quanyu_orders:
+  id: "db.table.quanyu_orders"
+  type: "database_table"
+  name: "quanyu_orders"
+  database: "topgun"
+  module: "module.order"
+  primary_key: [id]
+  fields:
+    id: { type: "bigint" }
+    mobile: { type: "varchar" }
+    pid: { type: "varchar" }
+    bus_code: { type: "varchar" }
+    sku_code: { type: "varchar" }
+    order_no: { type: "varchar", unique: true }
+    sync_status: { type: "tinyint", note: "全部为 0，从未成功同步" }
+    sync_error: { type: "text" }
+    push_response: { type: "text" }
+  indexes: ["pid", "sync_status", "order_no"]
+  note: "废弃表（写路径断裂，32,561 行孤儿数据）。down() 不删表。"
+  source: ["database_schema", "agent_inference"]
+  confidence: "confirmed"
+
+# channel_products —— 渠道产品归属
+db.table.channel_products:
+  id: "db.table.channel_products"
+  type: "database_table"
+  name: "channel_products"
+  database: "topgun"
+  module: "module.business-data"
+  primary_key: [id]
+  fields:
+    id: { type: "bigint" }
+    channel_id: { type: "bigint", note: "-> third_channels.id" }
+    product_id: { type: "bigint", note: "-> products.id" }
+  note: "渠道与产品的归属关系，订单校验（bus_code + sku_code）与路由绑定依据。"
+  source: ["database_schema"]
+  confidence: "confirmed"
+
+# products / business / carrier
+db.table.products:
+  id: "db.table.products"
+  type: "database_table"
+  name: "products"
+  database: "topgun"
+  module: "module.business-data"
+  fields:
+    id: { type: "bigint" }
+    sku_code: { type: "varchar" }
+    base_price: { type: "decimal" }
+    business_id: { type: "bigint", note: "-> business.id（注意：无 business_code 字段）" }
+    carrier_id: { type: "bigint" }
+    status: { type: "int" }
+  note: "真实 schema 无 business_code 列，正确关联是 business_id -> business.code。"
+  source: ["database_schema", "verified_code"]
+  confidence: "confirmed"
+
+db.table.business:
+  id: "db.table.business"
+  type: "database_table"
+  name: "business"
+  database: "topgun"
+  module: "module.business-data"
+  fields:
+    id: { type: "bigint" }
+    code: { type: "varchar", note: "订单校验中的 bus_code 对应此列" }
+    name: { type: "varchar" }
+  source: ["database_schema", "verified_code"]
+  confidence: "confirmed"
+
+db.table.carrier:
+  id: "db.table.carrier"
+  type: "database_table"
+  name: "carrier"
+  database: "topgun"
+  module: "module.business-data"
+  fields:
+    id: { type: "bigint" }
+    code: { type: "varchar" }
+    name: { type: "varchar" }
+  source: ["database_schema"]
+  confidence: "confirmed"
+
+# business_rules —— 业务规则配置表
+db.table.business_rules:
+  id: "db.table.business_rules"
+  type: "database_table"
+  name: "business_rules"
+  database: "topgun"
+  module: "module.order"
+  fields:
+    id: { type: "bigint" }
+  note: "规则引擎（RuleEngine）读取的业务规则配置表（2026_08_07 新增）。"
+  source: ["database_schema"]
+  confidence: "confirmed"
+
+# callback_logs
+db.table.callback_logs:
+  id: "db.table.callback_logs"
+  type: "database_table"
+  name: "callback_logs"
+  database: "topgun"
+  module: "module.order"
+  fields:
+    id: { type: "bigint" }
+  note: "回调日志表（2026_08_17 新增），CallbackLog 模型。"
+  source: ["database_schema"]
+  confidence: "confirmed"
+
+# 合同表
+db.table.master_contracts:
+  id: "db.table.master_contracts"
+  type: "database_table"
+  name: "master_contracts"
+  database: "topgun"
+  module: "module.contract"
+  fields:
+    id: { type: "bigint" }
+  source: ["database_schema"]
+  confidence: "confirmed"
+
+db.table.execution_contracts:
+  id: "db.table.execution_contracts"
+  type: "database_table"
+  name: "execution_contracts"
+  database: "topgun"
+  module: "module.contract"
+  fields:
+    id: { type: "bigint" }
+  source: ["database_schema"]
+  confidence: "confirmed"

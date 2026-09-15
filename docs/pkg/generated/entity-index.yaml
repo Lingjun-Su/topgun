@@ -1,0 +1,89 @@
+# 实体索引（generated / 自动生成，人工审核后可提升 confidence）
+
+generated_at: "2026-09-02"
+generator: "technical-director (initial import)"
+
+entities:
+  business:
+    - { id: "business.carrier", type: "business_entity", status: "active", owner: "module.business-data" }
+    - { id: "business.business", type: "business_entity", status: "active", owner: "module.business-data" }
+    - { id: "business.product", type: "business_entity", status: "active", owner: "module.business-data" }
+    - { id: "business.channel", type: "business_entity", status: "active", owner: "module.channel" }
+    - { id: "business.product_order", type: "business_entity", status: "active", owner: "module.order" }
+    - { id: "business.forward_order", type: "business_entity", status: "active", owner: "module.order" }
+    - { id: "business.quanyu_order", type: "business_entity", status: "deprecated", owner: "module.order" }
+    - { id: "business.tianxuan_order", type: "business_entity", status: "broken", owner: "module.order" }
+    - { id: "business.organization", type: "business_entity", status: "active", owner: "module.org-hr" }
+    - { id: "business.department", type: "business_entity", status: "active", owner: "module.org-hr" }
+    - { id: "business.position", type: "business_entity", status: "active", owner: "module.org-hr" }
+    - { id: "business.employee", type: "business_entity", status: "active", owner: "module.org-hr" }
+    - { id: "business.region", type: "business_entity", status: "active", owner: "module.org-hr" }
+    - { id: "business.master_contract", type: "business_entity", status: "active", owner: "module.contract" }
+    - { id: "business.execution_contract", type: "business_entity", status: "active", owner: "module.contract" }
+    - { id: "business.project", type: "business_entity", status: "active", owner: "module.project" }
+    - { id: "business.project_bid", type: "business_entity", status: "active", owner: "module.project" }
+    - { id: "business.settlement", type: "business_entity", status: "active", owner: "module.finance" }
+    - { id: "business.project_receivable", type: "business_entity", status: "active", owner: "module.finance" }
+    - { id: "business.project_payable", type: "business_entity", status: "active", owner: "module.finance" }
+    - { id: "business.invoice", type: "business_entity", status: "active", owner: "module.finance" }
+    - { id: "business.salary", type: "business_entity", status: "active", owner: "module.finance" }
+    - { id: "business.tax", type: "business_entity", status: "active", owner: "module.finance" }
+
+  module:
+    - { id: "module.auth", owner: "technical-director" }
+    - { id: "module.org-hr", owner: "technical-director" }
+    - { id: "module.business-data", owner: "technical-director" }
+    - { id: "module.channel", owner: "technical-director" }
+    - { id: "module.order", owner: "technical-director" }
+    - { id: "module.contract", owner: "technical-director" }
+    - { id: "module.project", owner: "technical-director" }
+    - { id: "module.finance", owner: "technical-director" }
+    - { id: "module.report", owner: "technical-director" }
+
+  database_table:
+    - { id: "db.table.third_channels", module: "module.channel" }
+    - { id: "db.table.product_orders", module: "module.order" }
+    - { id: "db.table.forward_orders", module: "module.order" }
+    - { id: "db.table.quanyu_orders", module: "module.order", status: "deprecated" }
+    - { id: "db.table.channel_products", module: "module.business-data" }
+    - { id: "db.table.products", module: "module.business-data" }
+    - { id: "db.table.business", module: "module.business-data" }
+    - { id: "db.table.carrier", module: "module.business-data" }
+    - { id: "db.table.business_rules", module: "module.order" }
+    - { id: "db.table.callback_logs", module: "module.order" }
+    - { id: "db.table.master_contracts", module: "module.contract" }
+    - { id: "db.table.execution_contracts", module: "module.contract" }
+
+  code:
+    - { id: "code.backend.receiver_controller", module: "module.order" }
+    - { id: "code.backend.forward_service", module: "module.order" }
+    - { id: "code.backend.channel_config_loader", module: "module.channel" }
+    - { id: "code.backend.data_mapper", module: "module.order" }
+    - { id: "code.backend.sign_service", module: "module.channel" }
+    - { id: "code.backend.callback_interpreter", module: "module.order" }
+    - { id: "code.backend.process_order_job", module: "module.order" }
+    - { id: "code.backend.forward_order_job", module: "module.order" }
+    - { id: "code.backend.push_service", module: "module.order" }
+    - { id: "code.backend.rule_engine", module: "module.order" }
+    - { id: "code.model.third_channels", module: "module.channel" }
+    - { id: "code.model.forward_order", module: "module.order" }
+    - { id: "code.model.product_order", module: "module.order" }
+
+  external_system:
+    - { id: "external.upstream_supplier", owner: "module.order" }
+    - { id: "external.downstream_channel", owner: "module.order" }
+    - { id: "external.mobile_endpoint", owner: "module.order" }
+
+  business_rule:
+    - { id: "rule.channel_role", owner: "module.channel" }
+    - { id: "rule.push_success", owner: "module.order" }
+    - { id: "rule.signature_auth", owner: "module.channel" }
+    - { id: "rule.order_state_machine", owner: "module.order" }
+    - { id: "rule.forward_target_resolution", owner: "module.order" }
+
+  state:
+    - { id: "state.product_order_status", owner: "module.order" }
+    - { id: "state.forward_status", owner: "module.order" }
+    - { id: "state.callback_status", owner: "module.order" }
+    - { id: "state.channel_role", owner: "module.channel" }
+    - { id: "state.channel_method", owner: "module.channel" }

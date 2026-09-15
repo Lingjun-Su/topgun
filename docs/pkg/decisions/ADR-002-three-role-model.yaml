@@ -1,0 +1,22 @@
+id: "ADR-002"
+title: "三方角色模型：third_channels 用 role 显式分类 A/C"
+status: "accepted"
+date: "2026-08"
+deciders: ["technical-director"]
+reference: "doc/需求与设计/order-channel-refactor/order-channel-refactor.html"
+
+context:
+  - "三方角色：A(上游供应商) / B(我们中间商) / C(下游推广公司)。"
+  - "third_channels 原无显式角色字段，身份判断隐含在 method / 公司字面量中，导致语义漂移与硬编码特例。"
+
+decision:
+  - "third_channels 新增 role 字段（2026_09_01_090000 迁移），显式取值 supplier_a / channel_c / unset。"
+  - "role（身份角色）与 method（能力位：接收/发送/转发）严格正交，禁止用 method 反推 role。"
+  - "新增 A/C 公司仅通过数据配置完成，不改代码。"
+  - "执行路径禁止任何公司字面量特例（pid==='186'、cladmin、xinquanyu、tianxuan、targetMethod==='quanyu'）。"
+
+consequences:
+  - "channel 判定逻辑收敛到 role 常量（ThirdChannels::ROLE_*）。"
+  - "需清理历史公司字面量（任务 T-10）。"
+
+source: ["adr", "business_rule"]

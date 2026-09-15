@@ -1,0 +1,67 @@
+# API 关系（api ↔ code ↔ 组）
+
+relations:
+  # v1 管理后台（Sanctum + data.permission）
+  - id: "rel.api_v1_auth"
+    from: "api.orders"
+    to: "module.order"
+    type: "exposes"
+    strength: "strong"
+    reason: "v1 订单管理接口（导出/状态统计/批量推送）由订单模块暴露"
+    source: ["api_contract"]
+    confidence: "confirmed"
+
+  - id: "rel.api_v1_channels"
+    from: "api.channels"
+    to: "module.channel"
+    type: "exposes"
+    strength: "strong"
+    reason: "v1 渠道管理接口（渠道 CRUD、渠道产品配置）"
+    source: ["api_contract"]
+    confidence: "confirmed"
+
+  - id: "rel.api_v1_contracts"
+    from: "api.contracts"
+    to: "module.contract"
+    type: "exposes"
+    strength: "strong"
+    reason: "v1 合同接口（框架合同 CRUD + 审核流转 + 拆分 + 执行合同）"
+    source: ["api_contract"]
+    confidence: "confirmed"
+
+  - id: "rel.api_v1_reports"
+    from: "api.reports"
+    to: "module.report"
+    type: "exposes"
+    strength: "strong"
+    reason: "v1 报表接口"
+    source: ["api_contract"]
+    confidence: "confirmed"
+
+  # v2 第三方渠道（签名 + 限流）
+  - id: "rel.api_v2_receive"
+    from: "api.third-channel.receive"
+    to: "code.backend.receiver_controller"
+    type: "implemented_by"
+    strength: "critical"
+    reason: "POST/GET third-channel、PUT third-channel/{order_no}、verify-submit、query-forward 由 ReceiverController 实现"
+    source: ["api_contract", "verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.api_v2_channel_auth"
+    from: "api.third-channel.receive"
+    to: "rule.signature_auth"
+    type: "protected_by"
+    strength: "critical"
+    reason: "v2 接口以渠道签名 + 限流鉴权"
+    source: ["api_contract", "verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.api_v2_callback"
+    from: "api.third-channel.callback"
+    to: "code.backend.callback_interpreter"
+    type: "implemented_by"
+    strength: "strong"
+    reason: "POST third-channel/callback/{pid}、callback-receive/{type} 由回调解释器处理"
+    source: ["api_contract", "verified_code"]
+    confidence: "confirmed"

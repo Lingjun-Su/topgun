@@ -1,0 +1,133 @@
+# 架构关系（business → module → code → database 纵向链）
+
+relations:
+  # 订单接收与转发核心链
+  - id: "rel.order_business_module"
+    from: "business.product_order"
+    to: "module.order"
+    type: "implemented_by"
+    strength: "critical"
+    reason: "业务订单由订单模块实现"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.order_api_controller"
+    from: "api.third-channel.receive"
+    to: "code.backend.receiver_controller"
+    type: "implemented_by"
+    strength: "critical"
+    reason: "v2 订单接收端点由 ReceiverController 实现"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.receiver_forward_service"
+    from: "code.backend.receiver_controller"
+    to: "code.backend.forward_service"
+    type: "calls"
+    strength: "critical"
+    reason: "dispatchForwardIfNeeded 调用 ForwardService.executeStep 同步转发"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.forward_service_config_loader"
+    from: "code.backend.forward_service"
+    to: "code.backend.channel_config_loader"
+    type: "uses"
+    strength: "strong"
+    reason: "加载目标渠道配置与推送 URL"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.forward_service_data_mapper"
+    from: "code.backend.forward_service"
+    to: "code.backend.data_mapper"
+    type: "uses"
+    strength: "strong"
+    reason: "请求映射与输出提取"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.forward_service_sign"
+    from: "code.backend.forward_service"
+    to: "code.backend.sign_service"
+    type: "uses"
+    strength: "strong"
+    reason: "请求签名"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.forward_model_table"
+    from: "code.model.forward_order"
+    to: "db.table.forward_orders"
+    type: "stored_in"
+    strength: "critical"
+    reason: "ForwardOrder 模型持久化到 forward_orders"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.order_model_table"
+    from: "code.model.product_order"
+    to: "db.table.product_orders"
+    type: "stored_in"
+    strength: "critical"
+    reason: "ProductOrder 模型持久化到 product_orders"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.channel_model_table"
+    from: "code.model.third_channels"
+    to: "db.table.third_channels"
+    type: "stored_in"
+    strength: "critical"
+    reason: "ThirdChannels 模型持久化到 third_channels"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  # 队列异步链
+  - id: "rel.receiver_process_job"
+    from: "code.backend.receiver_controller"
+    to: "code.backend.process_order_job"
+    type: "triggers"
+    strength: "strong"
+    reason: "store() 派发 ProcessOrderJob 到 high 队列异步写库"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  - id: "rel.order_event_no_listener"
+    from: "business.product_order"
+    to: "module.order"
+    type: "affects"
+    strength: "weak"
+    reason: "OrderCreated/OrderStatusUpdated 事件发出，但监听器未注册（见 scan-report，技术债）"
+    source: ["agent_inference"]
+    confidence: "probable"
+
+  # 渠道目标解析
+  - id: "rel.channel_config_resolution"
+    from: "module.channel"
+    to: "code.backend.channel_config_loader"
+    type: "contains"
+    strength: "strong"
+    reason: "中转目标解析（auto_forward + forward_target_pid）由 ChannelConfigLoader 承载"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  # 规则引擎
+  - id: "rel.order_rule_engine"
+    from: "module.order"
+    to: "code.backend.rule_engine"
+    type: "contains"
+    strength: "normal"
+    reason: "规则引擎读取 business_rules"
+    source: ["verified_code"]
+    confidence: "confirmed"
+
+  # 回调解释器
+  - id: "rel.order_callback_interpreter"
+    from: "module.order"
+    to: "code.backend.callback_interpreter"
+    type: "contains"
+    strength: "strong"
+    reason: "回调解释（默认 + 省份订单）"
+    source: ["verified_code"]
+    confidence: "confirmed"
